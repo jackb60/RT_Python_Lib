@@ -8,6 +8,7 @@ class rocket:
         self.servos = [0] * 8
         self.accelerometer = [0, 0, 0] #x, y, z
         self.barometer = 0
+        self.temp = 0
         self.pid = [0, 0, 0] #p, i, d
 
     """
@@ -24,7 +25,8 @@ class rocket:
             #Verify checksum
             for i in range(0, 128):
                 chksum += packet[i]
-            chksum %= 256
+                if chksum > 255:
+                    chksum %= 256
             
             if chksum != packet[127]:
                 return False
@@ -45,15 +47,19 @@ class rocket:
             #Parse servos
             servo_info = 0
             for i in range(0, 12):
-                servo_info += packet[3 + i] << (8 * i)
+                servo_info += packet[2 + i] << (8 * i)
 
             for i in range(0, 8):
                 self.servos[i] = (servo_info << (12 * i)) | 0xFFF
 
-            #Parse acceleration
-            self.accelerometer[0] = struct.unpack("<h", )[0]
-            self.accelerometer[1] = struct.unpack("<h", )[0]
-            self.accelerometer[2] = struct.unpack("<h", )[0]
+            #Parse accelerometer
+            self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0]
+            self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0]
+            self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0]
+
+            #Parse barometer
+            self.barometer = struct.unpack("")
+
 
     def ground_downlink_update(self):
         pass
