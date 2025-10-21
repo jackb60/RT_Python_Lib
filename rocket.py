@@ -17,14 +17,16 @@ class rocket:
         self.pid = [0, 0, 0] #p, i, d
         self.pyros = [0] * 8
         self.servos = [0] * 8
-        self.accelerometer = [0, 0, 0] #x, y, z
+        self.accelerometer = [0, 0, 0] #x, y, z, m/s^2
         self.barometer = 0
+        self.barofilteredalt = 0  #m
+        self.barofilteredvelo = 0  #m/s
         self.temp = 0
         self.magnetometer = [0, 0, 0] #x, y, z
         self.gps_fix = False
         self.lat = 0
         self.long = 0
-        self.alt = 0
+        self.gpsalt = 0
         self.pdop = 0
         self.hdop = 0
         self.vdop = 0
@@ -95,7 +97,7 @@ class rocket:
             self.gps_fix = packet[32] & 0x01
             self.lat = struct.unpack("<f", packet[39:43])[0]
             self.long = struct.unpack("<f", packet[43:47])[0]
-            self.alt = struct.unpack("<f", packet[47:51])[0]
+            self.gpsalt = struct.unpack("<f", packet[47:51])[0]
             self.pdop = struct.unpack("<f", packet[51:55])[0]
             self.hdop = struct.unpack("<f", packet[55:59])[0]
             self.vdop = struct.unpack("<f", packet[59:63])[0]
