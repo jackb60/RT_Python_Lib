@@ -1,4 +1,4 @@
-import Serial
+import serial
 import bleak
 import struct
 from enum import Enum
@@ -11,6 +11,7 @@ class state(Enum):
     APOGEE = 3
     DISREEF = 4
 
+dummy_data = bytes([85,85,0,0,0,0,0,0,0,0,0,232,163,65,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
 
 class rocket:
     def __init__(self):
@@ -42,21 +43,21 @@ class rocket:
     Returns: False if failed (no data/bad data), True if success
     """
     def telemetry_downlink_update(self):
-        if self.ser.in_waiting == 0:
+        if False:#self.ser.in_waiting == 0:
             return False
         else:
-            while int.from_bytes(self.ser.read(2)) != 0xABAB: #Wait for 0xABAB
-                pass
-            packet = self.ser.read(128)
+            #while int.from_bytes(self.ser.read(2)) != 0xABAB: #Wait for 0xABAB
+            #    pass
+            #packet = self.ser.read(128)
 
             #Verify checksum
-            for i in range(0, 128):
-                chksum += packet[i]
-                if chksum > 255:
-                    chksum %= 256
+            #for i in range(0, 128):
+            #    chksum += packet[i]
+            #    if chksum > 255:
+            #        chksum %= 256
             
-            if chksum != packet[127]:
-                return False
+            #if chksum != packet[127]:
+            #    return False
 
             """
             Parse pyros
@@ -66,19 +67,26 @@ class rocket:
                 2 = Connected
                 3 = Fired Successfully
             """
-            pyro_info = (packet[0] << 8) + packet[1]
+            print("Pyros:")
+            packet = dummy_data
+            pyro_info = packet[0] + (packet[1] << 8)
             for i in range(0, 8):
                 #Bitmask the two bits we care about
-                self.pyros[i] = (pyro_info >> (2 * i)) | 0b11
-
+                self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
+                print(i, ": ", end="")
+                print(self.pyros[i])
+            
             #Parse servos
+            print("Servos:")
             servo_info = 0
             for i in range(0, 12):
                 servo_info += packet[2 + i] << (8 * i)
 
             for i in range(0, 8):
-                self.servos[i] = (servo_info << (12 * i)) | 0xFFF
-
+                self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
+                print(i, ": ", end="")
+                print(self.servos[i])
+            """
             #Parse accelerometer
             self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0]
             self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0]
@@ -116,6 +124,7 @@ class rocket:
 
             #Parse State
             #TODO
+            """
 
     def ground_downlink_update(self):
         pass
@@ -140,3 +149,5 @@ class rocket:
     def servo_actuate(self, channel, position):
         pass
 
+a = rocket()
+a.telemetry_downlink_update()
