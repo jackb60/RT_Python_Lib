@@ -40,6 +40,7 @@ class rocket:
         self.roll_gyro_int = 0
         self.batt_voltage = 0
         self.state = state.GROUND_TESTING
+        self.pktnum = 0
 
     """
     Returns: False if failed (no data/bad data), True if success
@@ -149,7 +150,9 @@ class rocket:
 
             #Parse Timing
             self.flight_time = struct.unpack("<i", packet[66:70])[0]
-            self.last_rec = struct.unpack("<i", packet[70:74])
+            print("Flight Time (ms):", self.flight_time)
+            self.last_rec = struct.unpack("<i", packet[70:74])[0]
+            print("Last Record Time (ms):", self.last_rec)
 
             #Parse Gyro Integrated
             self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
@@ -175,6 +178,9 @@ class rocket:
             self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
             print("Baro Filtered Alt (m):", self.barofilteredalt)  
             print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
+
+            self.pktnum = struct.unpack("<h", packet[125:127])[0]
+            print("Packet Number:", self.pktnum)
 
     def ground_downlink_update(self):
         pass
