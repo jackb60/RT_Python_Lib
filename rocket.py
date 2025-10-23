@@ -11,7 +11,7 @@ class state(Enum):
     APOGEE = 4
     DISREEF = 5
 
-dummy_data = bytes([85,85,0,0,0,0,0,0,0,0,0,232,163,65,1,0,23,0,15,0,56,62,95,248,130,134,81,228,255,135,248,255,210,234,255,7,0,0,0,253,255,0,0,0,0,0,0,0,0,0,0,0,0,0,225,250,199,66,225,250,199,66,225,250,199,66,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+dummy_data = bytes([85,89,0,0,0,0,0,0,0,0,0,232,163,65,249,255,30,0,9,0,184,10,95,56,5,136,16,207,255,232,7,0,101,250,255,6,0,249,255,252,255,1,60,109,41,66,239,48,142,194,154,153,173,193,102,102,70,64,51,51,19,64,184,30,5,64,114,19,3,0,0,0,0,0,68,8,23,66,21,190,147,193,197,188,205,65,162,196,192,66,122,152,68,65,0,86,250,117,66,163,242,40,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,149,46,23])
 
 class rocket:
     def __init__(self):
@@ -23,7 +23,8 @@ class rocket:
         self.barofilteredalt = 0  #m
         self.barofilteredvelo = 0  #m/s
         self.temp = 0
-        self.magnetometer = [0, 0, 0] #x, y, z
+        self.gyro = [0, 0, 0] #x, y, z, deg/s
+        self.magnetometer = [0, 0, 0] #x, y, z, Gauss
         self.heading = 0
         self.gps_fix = False
         self.lat = 0
@@ -47,18 +48,20 @@ class rocket:
         if False:#self.ser.in_waiting == 0:
             return False
         else:
+            packet = dummy_data
             #while int.from_bytes(self.ser.read(2)) != 0xABAB: #Wait for 0xABAB
             #    pass
             #packet = self.ser.read(128)
 
             #Verify checksum
-            #for i in range(0, 128):
-            #    chksum += packet[i]
-            #    if chksum > 255:
-            #        chksum %= 256
+            chksum = 0
+            for i in range(0, 127):
+                chksum += packet[i]
+                if chksum > 255:
+                    chksum %= 256
             
-            #if chksum != packet[127]:
-            #    return False
+            if chksum != packet[127]:
+                return False
 
             """
             Parse pyros
@@ -68,8 +71,7 @@ class rocket:
                 2 = Connected
                 3 = Fired Successfully
             """
-            print("Pyros:")
-            packet = dummy_data
+            print("Pyros (0 = FAILURE, 1 = UNCONNECTED, 2 = CONNECTED, 3 = SUCCESS):")
             pyro_info = packet[0] + (packet[1] << 8)
             for i in range(0, 8):
                 #Bitmask the two bits we care about
@@ -78,7 +80,7 @@ class rocket:
                 print(self.pyros[i])
             
             #Parse servos
-            print("Servos:")
+            print("Servos (drive signal in microseconds):")
             servo_info = 0
             for i in range(0, 12):
                 servo_info += packet[2 + i] << (8 * i)
@@ -92,7 +94,7 @@ class rocket:
             self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.48052585
             self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0] * 0.48052585
             self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0] * 0.48052585
-            print("Accelerometer:")
+            print("Accelerometer (m/s^2):")
             print("X: ", self.accelerometer[0])
             print("Y: ", self.accelerometer[1])
             print("Z: ", self.accelerometer[2])
@@ -100,24 +102,39 @@ class rocket:
             #Parse barometer
             self.barometer = struct.unpack("<i", packet[20:23] + bytes([0x00]))[0]
             self.temp = struct.unpack("<i", packet[23:26] + bytes([0x00]))[0]
-            print("Baro Raw:", self.barometer)
-            print("Temp Raw:", self.temp)
+            #print("Baro Raw:", self.barometer)
+            #print("Temp Raw:", self.temp)
             
             #Parse magnetometer
-            self.magnetometer[0] = struct.unpack("<i", packet[26:29] + bytes([0x00]))[0]
-            self.magnetometer[1] = struct.unpack("<i", packet[29:32] + bytes([0x00]))[0]
-            self.magnetometer[2] = struct.unpack("<i", packet[32:35] + bytes([0x00]))[0]
-            print("Magnetometer:")
+            def sign_extend(i):
+                if(packet[i] & 0x80):
+                    return bytes([0xFF])
+                else:
+                    return bytes([0x00])
+            self.magnetometer[0] = struct.unpack("<i", packet[26:29] + sign_extend(28))[0] * 0.0625
+            self.magnetometer[1] = struct.unpack("<i", packet[29:32] + sign_extend(31))[0] * 0.0625
+            self.magnetometer[2] = struct.unpack("<i", packet[32:35] + sign_extend(34))[0] * 0.0625
+            print("Magnetometer (mG):")
             print("X: ", self.magnetometer[0])
             print("Y: ", self.magnetometer[1])
             print("Z: ", self.magnetometer[2])
-            
+
+            #Parse gyro
+            self.gyro[0] = struct.unpack("<h", packet[35:37])[0] * 0.03051757812
+            self.gyro[1] = struct.unpack("<h", packet[37:39])[0] * -0.03051757812
+            self.gyro[2] = struct.unpack("<h", packet[39:41])[0] * 0.03051757812
+            print("Gyro (deg/s):")
+            print("X: ", self.gyro[0])
+            print("Y: ", self.gyro[1])
+            print("Z: ", self.gyro[2])
+
             #Parse GPS
             self.gps_fix = packet[41]
+            print("GPS FIX: ", end="")
             if(self.gps_fix):
-                print("GPS FIX")
+                print("YES")
             else:
-                print("NO FIX")
+                print("NO")
             self.lat = struct.unpack("<f", packet[42:46])[0]
             self.lon = struct.unpack("<f", packet[46:50])[0]
             self.gpsalt = struct.unpack("<f", packet[50:54])[0]
@@ -138,21 +155,26 @@ class rocket:
             self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
             self.pitch_gyro_int = struct.unpack("<f", packet[78:82])[0]
             self.roll_gyro_int = struct.unpack("<f", packet[82:86])[0]
-            print("GYRO:")
-            print(self.yaw_gyro_int)
-            print(self.pitch_gyro_int)
-            print(self.roll_gyro_int)
+            print("GYRO Integrated (DEG):")
+            print("X: ", self.yaw_gyro_int)
+            print("Y: ", self.pitch_gyro_int)
+            print("Z: ", self.roll_gyro_int)
 
             self.heading = struct.unpack("<f", packet[86:90])[0]
-            print("MAG HEADING:", self.heading)
+            print("MAG HEADING (DEG):", self.heading)
 
             
             #Parse Battery Voltage
             self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
+            print("Battery Voltage (V):", self.batt_voltage)
 
             self.state = packet[94]
+            print("State:", self.state)
             
             self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
+            self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
+            print("Baro Filtered Alt (m):", self.barofilteredalt)  
+            print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
 
     def ground_downlink_update(self):
         pass
