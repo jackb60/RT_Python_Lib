@@ -2,6 +2,8 @@ import serial
 import bleak
 import struct
 from enum import Enum
+import time 
+import asyncio
 
 class state(Enum):
     GROUND_TESTING = 0
@@ -41,18 +43,25 @@ class rocket:
         self.batt_voltage = 0
         self.state = state.GROUND_TESTING
         self.pktnum = 0
+        self.ser = serial.Serial('COM11', 115200, timeout=1)
+        self.rssi = 0
+        self.bleclient = None
 
     """
     Returns: False if failed (no data/bad data), True if success
     """
     def telemetry_downlink_update(self):
-        if False:#self.ser.in_waiting == 0:
+        if self.ser.in_waiting == 0:
             return False
         else:
             packet = dummy_data
-            #while int.from_bytes(self.ser.read(2)) != 0xABAB: #Wait for 0xABAB
-            #    pass
-            #packet = self.ser.read(128)
+            while self.ser.read(1) != bytes([0xAB]) and self.ser.read(1) != bytes([0xAB]): #Wait for 0xABAB
+                pass
+            while self.ser.read(1) != bytes([0xAB]):
+                pass
+            packet = self.ser.read(128)
+            self.rssi = self.ser.read(1)[0] - 81
+            #print(self.rssi)
 
             #Verify checksum
             chksum = 0
@@ -72,16 +81,16 @@ class rocket:
                 2 = Connected
                 3 = Fired Successfully
             """
-            print("Pyros (0 = FAILURE, 1 = UNCONNECTED, 2 = CONNECTED, 3 = SUCCESS):")
+            #print("Pyros (0 = FAILURE, 1 = UNCONNECTED, 2 = CONNECTED, 3 = SUCCESS):")
             pyro_info = packet[0] + (packet[1] << 8)
             for i in range(0, 8):
                 #Bitmask the two bits we care about
                 self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
-                print(i, ": ", end="")
-                print(self.pyros[i])
+                #print(i, ": ", end="")
+                #print(self.pyros[i])
             
             #Parse servos
-            print("Servos (drive signal in microseconds):")
+            #print("Servos (drive signal in microseconds):")
             servo_info = 0
             for i in range(0, 12):
                 servo_info += packet[2 + i] << (8 * i)
@@ -95,16 +104,16 @@ class rocket:
             self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.48052585
             self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0] * 0.48052585
             self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0] * 0.48052585
-            print("Accelerometer (m/s^2):")
-            print("X: ", self.accelerometer[0])
-            print("Y: ", self.accelerometer[1])
-            print("Z: ", self.accelerometer[2])
+            #print("Accelerometer (m/s^2):")
+            #print("X: ", self.accelerometer[0])
+            #print("Y: ", self.accelerometer[1])
+            #print("Z: ", self.accelerometer[2])
 
             #Parse barometer
             self.barometer = struct.unpack("<i", packet[20:23] + bytes([0x00]))[0]
             self.temp = struct.unpack("<i", packet[23:26] + bytes([0x00]))[0]
-            #print("Baro Raw:", self.barometer)
-            #print("Temp Raw:", self.temp)
+            ##print("Baro Raw:", self.barometer)
+            ##print("Temp Raw:", self.temp)
             
             #Parse magnetometer
             def sign_extend(i):
@@ -115,26 +124,28 @@ class rocket:
             self.magnetometer[0] = struct.unpack("<i", packet[26:29] + sign_extend(28))[0] * 0.0625
             self.magnetometer[1] = struct.unpack("<i", packet[29:32] + sign_extend(31))[0] * 0.0625
             self.magnetometer[2] = struct.unpack("<i", packet[32:35] + sign_extend(34))[0] * 0.0625
-            print("Magnetometer (mG):")
-            print("X: ", self.magnetometer[0])
-            print("Y: ", self.magnetometer[1])
-            print("Z: ", self.magnetometer[2])
+            #print("Magnetometer (mG):")
+            #print("X: ", self.magnetometer[0])
+            #print("Y: ", self.magnetometer[1])
+            #print("Z: ", self.magnetometer[2])
 
             #Parse gyro
             self.gyro[0] = struct.unpack("<h", packet[35:37])[0] * 0.03051757812
             self.gyro[1] = struct.unpack("<h", packet[37:39])[0] * -0.03051757812
             self.gyro[2] = struct.unpack("<h", packet[39:41])[0] * 0.03051757812
-            print("Gyro (deg/s):")
-            print("X: ", self.gyro[0])
-            print("Y: ", self.gyro[1])
-            print("Z: ", self.gyro[2])
+            #print("Gyro (deg/s):")
+            #print("X: ", self.gyro[0])
+            #print("Y: ", self.gyro[1])
+            #print("Z: ", self.gyro[2])
 
             #Parse GPS
             self.gps_fix = packet[41]
-            print("GPS FIX: ", end="")
+            #print("GPS FIX: ", end="")
             if(self.gps_fix):
+                #pass
                 print("YES")
             else:
+                #pass
                 print("NO")
             self.lat = struct.unpack("<f", packet[42:46])[0]
             self.lon = struct.unpack("<f", packet[46:50])[0]
@@ -143,51 +154,51 @@ class rocket:
             self.hdop = struct.unpack("<f", packet[58:62])[0]
             self.vdop = struct.unpack("<f", packet[62:66])[0]
             print("LAT: ", self.lat)
-            print("LONG: ", self.lon)
-            print("PDOP: ", self.pdop)
-            print("HDOP: ", self.hdop)
-            print("VDOP: ", self.vdop)
+            #print("LONG: ", self.lon)
+            #print("PDOP: ", self.pdop)
+            #print("HDOP: ", self.hdop)
+            #print("VDOP: ", self.vdop)
 
             #Parse Timing
             self.flight_time = struct.unpack("<i", packet[66:70])[0]
-            print("Flight Time (ms):", self.flight_time)
+            #print("Flight Time (ms):", self.flight_time)
             self.last_rec = struct.unpack("<i", packet[70:74])[0]
-            print("Last Record Time (ms):", self.last_rec)
+            #print("Last Record Time (ms):", self.last_rec)
 
             #Parse Gyro Integrated
             self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
             self.pitch_gyro_int = struct.unpack("<f", packet[78:82])[0]
             self.roll_gyro_int = struct.unpack("<f", packet[82:86])[0]
-            print("GYRO Integrated (DEG):")
-            print("X: ", self.yaw_gyro_int)
-            print("Y: ", self.pitch_gyro_int)
-            print("Z: ", self.roll_gyro_int)
+            #print("GYRO Integrated (DEG):")
+            #print("X: ", self.yaw_gyro_int)
+            #print("Y: ", self.pitch_gyro_int)
+            #print("Z: ", self.roll_gyro_int)
 
             self.heading = struct.unpack("<f", packet[86:90])[0]
-            print("MAG HEADING (DEG):", self.heading)
+            #print("MAG HEADING (DEG):", self.heading)
 
             
             #Parse Battery Voltage
             self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
-            print("Battery Voltage (V):", self.batt_voltage)
+            #print("Battery Voltage (V):", self.batt_voltage)
 
             self.state = packet[94]
-            print("State:", self.state)
+            #print("State:", self.state)
             
             self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
             self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
-            print("Baro Filtered Alt (m):", self.barofilteredalt)  
-            print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
-
+            #print("Baro Filtered Alt (m):", self.barofilteredalt)  
+            #print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
+            
             self.pktnum = struct.unpack("<h", packet[125:127])[0]
-            print("Packet Number:", self.pktnum)
+            #print("Packet Number:", self.pktnum)
 
     def ground_downlink_update(self):
         pass
 
 
     def set_state(self, state):
-        pass
+        self.ser.write(bytes([0xFE, self.state]))
 
 
     def set_pid(self, p, i, d):
@@ -199,11 +210,39 @@ class rocket:
 
 
     def fire_pyro(self, channel):
-        pass
+        self.ser.write(bytes([0xFF, 0x01 << channel]))
 
 
     def servo_actuate(self, channel, position):
         pass
 
+    def roll_angle_set(self, angle):
+        async def roll_angle_set_async(self, angle):
+            servo_uuid = "135ba421-a765-41c2-9b46-ab149ed6c933"
+            msg = f"{angle}"
+            await self.bleclient.write_gatt_char(servo_uuid, msg.encode())
+        asyncio.run(roll_angle_set_async(self, angle))
+
+    def ser_clear_buffer(self):
+        self.ser.reset_input_buffer()
+
+    def bleconnect(self):
+        async def connect():
+            address = "CB:37:98:8C:D3:E5"
+            self.bleclient = bleak.BleakClient(address)
+            await self.bleclient.connect()
+        asyncio.run(connect())
+
 a = rocket()
-a.telemetry_downlink_update()
+a.bleconnect()
+a.roll_angle_set(30)
+while True:
+    a.roll_angle_set(20)
+    #b = input("::")
+    #a.roll_angle_set(b)
+    #a.ser_clear_buffer()
+    #time.sleep(.1)
+    a.telemetry_downlink_update()
+    #a.fire_pyro(1)
+    #time.sleep(.1)
+#a.fire_pyro(2)
