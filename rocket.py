@@ -48,6 +48,7 @@ class rocket:
         self.bleclient = None
         self.armed = [0] * 8
         self.fired = [0] * 8
+        self.badpackets = 0
 
     """
     Returns: False if failed (no data/bad data), True if success
@@ -207,6 +208,9 @@ class rocket:
             self.pktnum = struct.unpack("<h", packet[125:127])[0]
             #print("Packet Number:", self.pktnum)
 
+            self.badpackets = packet[105]
+            print("Bad Packets:", self.badpackets)
+
     def ground_downlink_update(self):
         pass
 
@@ -270,6 +274,7 @@ class rocket:
             if chksum > (256 * 256 - 1):
                 chksum %= (256 * 256)
         return chksum
+    
 
 a = rocket()
 #a.arm_pyros([0,1,2,3,4,5])
