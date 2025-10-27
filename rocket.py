@@ -46,6 +46,8 @@ class rocket:
         self.ser = serial.Serial('COM11', 115200, timeout=1)
         self.rssi = 0
         self.bleclient = None
+        self.armed = [0] * 8
+        self.fired = [0] * 8
 
     """
     Returns: False if failed (no data/bad data), True if success
@@ -88,6 +90,18 @@ class rocket:
                 self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
                 #print(i, ": ", end="")
                 #print(self.pyros[i])
+
+            armed = packet[103]
+            for i in range(0,8):
+                self.armed[i] = (armed >> i) & 0x01
+                if self.armed[i]:
+                    print(f"WARNING: Pyro {i} ARMED")
+            
+            fired = packet[104]
+            for i in range(0,8):
+                self.fired[i] = (fired >> i) & 0x01
+                if self.fired[i]:
+                    print(f"EVENT: Pyro {i} FIRED")
             
             #Parse servos
             #print("Servos (drive signal in microseconds):")
@@ -97,8 +111,8 @@ class rocket:
 
             for i in range(0, 8):
                 self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
-                print(i, ": ", end="")
-                print(self.servos[i])
+                #print(i, ": ", end="")
+                #print(self.servos[i])
             
             #Parse accelerometer
             self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.48052585
@@ -142,18 +156,18 @@ class rocket:
             self.gps_fix = packet[41]
             #print("GPS FIX: ", end="")
             if(self.gps_fix):
-                #pass
-                print("YES")
+                pass
+                #print("YES")
             else:
-                #pass
-                print("NO")
+                pass
+                #print("NO")
             self.lat = struct.unpack("<f", packet[42:46])[0]
             self.lon = struct.unpack("<f", packet[46:50])[0]
             self.gpsalt = struct.unpack("<f", packet[50:54])[0]
             self.pdop = struct.unpack("<f", packet[54:58])[0]
             self.hdop = struct.unpack("<f", packet[58:62])[0]
             self.vdop = struct.unpack("<f", packet[62:66])[0]
-            print("LAT: ", self.lat)
+            #print("LAT: ", self.lat)
             #print("LONG: ", self.lon)
             #print("PDOP: ", self.pdop)
             #print("HDOP: ", self.hdop)
@@ -208,9 +222,25 @@ class rocket:
     def pid_activate(self, channels):
         pass
 
+    def arm_pyros(self, channels):
+        #self.ser.write(bytes([0xFF, 0x01 << channel]))
+        data = bytearray(16)
+        data[0] = 0xAA
+        for i in channels:    
+            data[12] |= 0x01 << i
+        data[13] = 0x01
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
-    def fire_pyro(self, channel):
-        self.ser.write(bytes([0xFF, 0x01 << channel]))
+    def fire_pyros(self, channels):
+        #self.ser.write(bytes([0xFF, 0x01 << channel]))
+        data = bytearray(16)
+        data[0] = 0xAA
+        for i in channels:    
+            data[12] |= 0x01 << i
+        data[13] = 0x06
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
 
     def servo_actuate(self, channel, position):
@@ -233,15 +263,30 @@ class rocket:
             await self.bleclient.connect()
         asyncio.run(connect())
 
+    def calc_checksum(self, data):
+        chksum = 0
+        for i in range(1, 14):
+            chksum += data[i]
+            if chksum > (256 * 256 - 1):
+                chksum %= (256 * 256)
+        return chksum
+
 a = rocket()
-a.bleconnect()
-a.roll_angle_set(30)
+#a.arm_pyros([0,1,2,3,4,5])
+#a.fire_pyros([0,1,2,3,4,5,6,7])
+
 while True:
-    a.roll_angle_set(20)
-    #b = input("::")
+    #a.roll_angle_set(20)
     #a.roll_angle_set(b)
     #a.ser_clear_buffer()
     #time.sleep(.1)
+    """b = input("::")
+    if b == "arm":
+        a.arm_pyros([0,1,2,3,4])
+    elif b == "fire":
+        a.fire_pyros([0,1,2,3,4,5,6,7])
+    a.ser_clear_buffer()
+    time.sleep(.1)"""
     a.telemetry_downlink_update()
     #a.fire_pyro(1)
     #time.sleep(.1)
