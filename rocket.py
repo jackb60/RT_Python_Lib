@@ -1,54 +1,68 @@
 import serial
-import bleak
 import struct
 from enum import Enum
 import time 
-import asyncio
+import os
+import csv
 
 class state(Enum):
     GROUND_TESTING = 0
     PRE_FLIGHT = 1
     FLIGHT = 2
-    ROLL_CONTROL = 3
-    APOGEE = 4
-    DISREEF = 5
-
-dummy_data = bytes([85,89,0,0,0,0,0,0,0,0,0,232,163,65,249,255,30,0,9,0,184,10,95,56,5,136,16,207,255,232,7,0,101,250,255,6,0,249,255,252,255,1,60,109,41,66,239,48,142,194,154,153,173,193,102,102,70,64,51,51,19,64,184,30,5,64,114,19,3,0,0,0,0,0,68,8,23,66,21,190,147,193,197,188,205,65,162,196,192,66,122,152,68,65,0,86,250,117,66,163,242,40,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,149,46,23])
+    APOGEE = 3
+    DISREEF = 4
 
 class rocket:
     def __init__(self):
         self.pid = [0, 0, 0] #p, i, d
+        self.ser = serial.Serial('COM11', 115200, timeout=1)
+        self.logging = False
+        self.file = None
+        self.csv_writer = None
+
         self.pyros = [0] * 8
         self.servos = [0] * 8
         self.accelerometer = [0, 0, 0] #x, y, z, m/s^2
         self.barometer = 0
         self.barofilteredalt = 0  #m
         self.barofilteredvelo = 0  #m/s
-        self.temp = 0
+        self.temp = 0 #deg C
         self.gyro = [0, 0, 0] #x, y, z, deg/s
         self.magnetometer = [0, 0, 0] #x, y, z, Gauss
-        self.heading = 0
+        self.heading = 0 #deg
         self.gps_fix = False
         self.lat = 0
         self.long = 0
-        self.gpsalt = 0
+        self.gpsalt = 0 #m
         self.pdop = 0
         self.hdop = 0
         self.vdop = 0
-        self.flight_time = 0
-        self.last_rec = 0
-        self.yaw_gyro_int = 0
-        self.pitch_gyro_int = 0
-        self.roll_gyro_int = 0
-        self.batt_voltage = 0
+        self.flight_time = 0 #msec
+        self.last_rec = 0 #msec
+        self.yaw_gyro_int = 0 #deg
+        self.pitch_gyro_int = 0 #deg
+        self.roll_gyro_int = 0 #deg
+        self.batt_voltage = 0 #V
         self.state = state.GROUND_TESTING
         self.pktnum = 0
-        self.ser = serial.Serial('COM11', 115200, timeout=1)
-        self.rssi = 0
-        self.bleclient = None
+        self.rssi = 0 #dBm
         self.armed = [0] * 8
         self.fired = [0] * 8
         self.badpackets = 0
+        self.rxrssi = 0 #dBm
+        self.accel_integrated_velo = 0 #m/s 
+        self.baro_max_alt = 0 #m
+        self.gps_max_alt = 0 #m
+        
+    
+    def log_data_start(self):
+        self.logging = True
+        self.file = open(f"telemetry_{time.time()}.csv", "w", newline='')
+        self.csv_writer = csv.writer(self.file)
+
+    def log_data_stop(self):
+        self.logging = False
+        self.file.close()
 
     """
     Returns: False if failed (no data/bad data), True if success
@@ -57,7 +71,6 @@ class rocket:
         if self.ser.in_waiting == 0:
             return False
         else:
-            packet = dummy_data
             while self.ser.read(1) != bytes([0xAB]) and self.ser.read(1) != bytes([0xAB]): #Wait for 0xABAB
                 pass
             while self.ser.read(1) != bytes([0xAB]):
@@ -76,6 +89,9 @@ class rocket:
             if chksum != packet[127]:
                 return False
 
+            self.rxrssi = packet[106] - 92
+            #print("RX RSSI:", self.rxrssi)
+
             """
             Parse pyros
             For each pyro:
@@ -91,18 +107,17 @@ class rocket:
                 self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
                 #print(i, ": ", end="")
                 #print(self.pyros[i])
-
             armed = packet[103]
             for i in range(0,8):
                 self.armed[i] = (armed >> i) & 0x01
-                if self.armed[i]:
-                    print(f"WARNING: Pyro {i} ARMED")
+                #if self.armed[i]:
+                #    print(f"WARNING: Pyro {i} ARMED")
             
             fired = packet[104]
             for i in range(0,8):
                 self.fired[i] = (fired >> i) & 0x01
-                if self.fired[i]:
-                    print(f"EVENT: Pyro {i} FIRED")
+                #if self.fired[i]:
+                #    print(f"EVENT: Pyro {i} FIRED")
             
             #Parse servos
             #print("Servos (drive signal in microseconds):")
@@ -197,26 +212,53 @@ class rocket:
             self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
             #print("Battery Voltage (V):", self.batt_voltage)
 
-            self.state = packet[94]
+            self.state = state(packet[94])
             #print("State:", self.state)
             
             self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
             self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
             #print("Baro Filtered Alt (m):", self.barofilteredalt)  
             #print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
+
+            self.accel_integrated_velo = struct.unpack("<f", packet[107:111])[0]
+            #print("Accel Integrated Velo (m/s):", self.accel_integrated_velo)
+
+            self.baro_max_alt = struct.unpack("<f", packet[111:115])[0]
+            #print("Baro Max Alt (m):", self.baro_max_alt)
+
+            self.gps_max_alt = struct.unpack("<f", packet[115:119])[0]
+            #print("GPS Max Alt (m):", self.gps_max_alt)
             
             self.pktnum = struct.unpack("<h", packet[125:127])[0]
             #print("Packet Number:", self.pktnum)
 
             self.badpackets = packet[105]
-            print("Bad Packets:", self.badpackets)
+            #print("Bad Packets:", self.badpackets)
+            if self.logging:
+                data = [
+                    time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
+                    self.barofilteredalt, self.barofilteredvelo, self.temp, self.gyro,
+                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.long, self.gpsalt,
+                    self.pdop, self.hdop, self.vdop, self.flight_time, self.last_rec,
+                    self.yaw_gyro_int, self.pitch_gyro_int, self.roll_gyro_int,
+                    self.batt_voltage, str(self.state), self.pktnum, self.rssi,
+                    self.armed, self.fired, self.badpackets, self.rxrssi,
+                    self.accel_integrated_velo, self.baro_max_alt, self.gps_max_alt
+                ]
+                self.csv_writer.writerow(data)
+                self.file.flush()
+                os.fsync(self.file.fileno())
+            return True
 
-    def ground_downlink_update(self):
-        pass
+                
 
-
-    def set_state(self, state):
-        self.ser.write(bytes([0xFE, self.state]))
+    def advance_state(self):
+        data = bytearray(16)
+        data[0] = 0xAA 
+        data[12] = self.state.value + 1
+        data[13] = 0x01
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
 
     def set_pid(self, p, i, d):
@@ -227,7 +269,6 @@ class rocket:
         pass
 
     def arm_pyros(self, channels):
-        #self.ser.write(bytes([0xFF, 0x01 << channel]))
         data = bytearray(16)
         data[0] = 0xAA
         for i in channels:    
@@ -237,7 +278,6 @@ class rocket:
         self.ser.write(data)
 
     def fire_pyros(self, channels):
-        #self.ser.write(bytes([0xFF, 0x01 << channel]))
         data = bytearray(16)
         data[0] = 0xAA
         for i in channels:    
@@ -246,26 +286,17 @@ class rocket:
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
+    def disarm_pyros(self, channels):
+        data = bytearray(16)
+        data[0] = 0xAA
+        for i in channels:    
+            data[12] |= 0x01 << i
+        data[13] = 0x07
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
-    def servo_actuate(self, channel, position):
+    def servos_set_angle(self, angle):
         pass
-
-    def roll_angle_set(self, angle):
-        async def roll_angle_set_async(self, angle):
-            servo_uuid = "135ba421-a765-41c2-9b46-ab149ed6c933"
-            msg = f"{angle}"
-            await self.bleclient.write_gatt_char(servo_uuid, msg.encode())
-        asyncio.run(roll_angle_set_async(self, angle))
-
-    def ser_clear_buffer(self):
-        self.ser.reset_input_buffer()
-
-    def bleconnect(self):
-        async def connect():
-            address = "CB:37:98:8C:D3:E5"
-            self.bleclient = bleak.BleakClient(address)
-            await self.bleclient.connect()
-        asyncio.run(connect())
 
     def calc_checksum(self, data):
         chksum = 0
@@ -275,24 +306,15 @@ class rocket:
                 chksum %= (256 * 256)
         return chksum
     
-
+"""
 a = rocket()
+a.log_data_start()
+start = time.time()
+while time.time() - start < 5:
+    a.telemetry_downlink_update()
 #a.arm_pyros([0,1,2,3,4,5])
 #a.fire_pyros([0,1,2,3,4,5,6,7])
 
 while True:
-    #a.roll_angle_set(20)
-    #a.roll_angle_set(b)
-    #a.ser_clear_buffer()
-    #time.sleep(.1)
-    """b = input("::")
-    if b == "arm":
-        a.arm_pyros([0,1,2,3,4])
-    elif b == "fire":
-        a.fire_pyros([0,1,2,3,4,5,6,7])
-    a.ser_clear_buffer()
-    time.sleep(.1)"""
     a.telemetry_downlink_update()
-    #a.fire_pyro(1)
-    #time.sleep(.1)
-#a.fire_pyro(2)
+"""
