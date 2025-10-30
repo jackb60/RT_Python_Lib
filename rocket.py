@@ -111,13 +111,13 @@ class rocket:
             for i in range(0,8):
                 self.armed[i] = (armed >> i) & 0x01
                 #if self.armed[i]:
-                #    print(f"WARNING: Pyro {i} ARMED")
+                    #print(f"WARNING: Pyro {i} ARMED")
             
             fired = packet[104]
             for i in range(0,8):
                 self.fired[i] = (fired >> i) & 0x01
                 #if self.fired[i]:
-                #    print(f"EVENT: Pyro {i} FIRED")
+                    #print(f"EVENT: Pyro {i} FIRED")
             
             #Parse servos
             #print("Servos (drive signal in microseconds):")
@@ -185,6 +185,7 @@ class rocket:
             self.vdop = struct.unpack("<f", packet[62:66])[0]
             #print("LAT: ", self.lat)
             #print("LONG: ", self.lon)
+            #print("GPS ALT (m): ", self.gpsalt)
             #print("PDOP: ", self.pdop)
             #print("HDOP: ", self.hdop)
             #print("VDOP: ", self.vdop)
@@ -275,7 +276,7 @@ class rocket:
         data = bytearray(16)
         data[0] = 0xAA 
         data[12] = self.state.value + 1
-        data[13] = 0x01
+        data[13] = 0x02
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
@@ -335,7 +336,7 @@ class rocket:
             if chksum > (256 * 256 - 1):
                 chksum %= (256 * 256)
         return chksum
-    
+
 """
 a = rocket()
 a.log_data_start()
@@ -345,6 +346,19 @@ while time.time() - start < 5:
 #a.arm_pyros([0,1,2,3,4,5])
 #a.fire_pyros([0,1,2,3,4,5,6,7])
 
+a = rocket()
+#a.zero_roll()
+#a.zero_alt()
+#a.arm_pyros([2])
+#a.fire_pyros([2])
+#a.zero_roll()
+
+#time.sleep(5)
+#a.servos_set_angle(0)
 while True:
-    a.telemetry_downlink_update()
+    a.ser.read_all()
+    while not a.telemetry_downlink_update():
+        pass
+    a.advance_state()
+    time.sleep(1)
 """
