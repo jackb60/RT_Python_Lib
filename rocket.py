@@ -250,7 +250,26 @@ class rocket:
                 os.fsync(self.file.fileno())
             return True
 
-                
+    def zero_roll(self):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x09
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
+
+    def zero_alt(self):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x0A
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
+
+    def zero_velo(self):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x0B
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
     def advance_state(self):
         data = bytearray(16)
@@ -260,13 +279,19 @@ class rocket:
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
+    def zero_servos(self):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x08
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
-    def set_pid(self, p, i, d):
-        pass
-
-
-    def pid_activate(self, channels):
-        pass
+    def pd_activate(self):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x04
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
     def arm_pyros(self, channels):
         data = bytearray(16)
@@ -296,7 +321,12 @@ class rocket:
         self.ser.write(data)
 
     def servos_set_angle(self, angle):
-        pass
+        data = bytearray(16)
+        data[0] = 0xAA
+        struct.pack_into("<f", data, 9, angle)
+        data[13] = 0x03
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
     def calc_checksum(self, data):
         chksum = 0
