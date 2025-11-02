@@ -15,7 +15,7 @@ class state(Enum):
 class rocket:
     def __init__(self):
         self.pid = [0, 0, 0] #p, i, d
-        self.ser = serial.Serial('COM11', 115200, timeout=1)
+        self.ser = serial.Serial('COM3', 9600, timeout=1)
         self.logging = False
         self.file = None
         self.csv_writer = None
@@ -76,7 +76,8 @@ class rocket:
             while self.ser.read(1) != bytes([0xAB]):
                 pass
             packet = self.ser.read(128)
-            self.rssi = self.ser.read(1)[0] - 81
+            print(packet)
+            #self.rssi = self.ser.read(1)[0] - 81
             #print(self.rssi)
 
             #Verify checksum
@@ -131,9 +132,9 @@ class rocket:
                 #print(self.servos[i])
             
             #Parse accelerometer
-            self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.00390625 * 9.80665
-            self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0] * 0.00390625 * 9.80665
-            self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0] * 0.00390625 * 9.80665
+            self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.48052585
+            self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0] * 0.48052585
+            self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0] * 0.48052585
             #print("Accelerometer (m/s^2):")
             #print("X: ", self.accelerometer[0])
             #print("Y: ", self.accelerometer[1])
@@ -251,93 +252,6 @@ class rocket:
                 os.fsync(self.file.fileno())
             return True
 
-    def zero_roll(self):
-        data = bytearray(16)
-        data[0] = 0xAA
-        data[13] = 0x09
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def zero_alt(self):
-        data = bytearray(16)
-        data[0] = 0xAA
-        data[13] = 0x0A
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def zero_velo(self):
-        data = bytearray(16)
-        data[0] = 0xAA
-        data[13] = 0x0B
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def advance_state(self):
-        data = bytearray(16)
-        data[0] = 0xAA 
-        data[12] = self.state.value + 1
-        data[13] = 0x02
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def zero_servos(self):
-        data = bytearray(16)
-        data[0] = 0xAA
-        data[13] = 0x08
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def pd_activate(self):
-        data = bytearray(16)
-        data[0] = 0xAA
-        data[13] = 0x04
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def arm_pyros(self, channels):
-        data = bytearray(16)
-        data[0] = 0xAA
-        for i in channels:    
-            data[12] |= 0x01 << i
-        data[13] = 0x01
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def fire_pyros(self, channels):
-        data = bytearray(16)
-        data[0] = 0xAA
-        for i in channels:    
-            data[12] |= 0x01 << i
-        data[13] = 0x06
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def disarm_pyros(self, channels):
-        data = bytearray(16)
-        data[0] = 0xAA
-        for i in channels:    
-            data[12] |= 0x01 << i
-        data[13] = 0x07
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def servos_set_angle(self, angle):
-        data = bytearray(16)
-        data[0] = 0xAA
-        struct.pack_into("<f", data, 9, angle)
-        data[13] = 0x03
-        struct.pack_into(">H", data, 14, self.calc_checksum(data))
-        self.ser.write(data)
-
-    def calc_checksum(self, data):
-        chksum = 0
-        for i in range(1, 14):
-            chksum += data[i]
-            if chksum > (256 * 256 - 1):
-                chksum %= (256 * 256)
-        return chksum
-
-
 a = rocket()
 """
 a.log_data_start()
@@ -357,18 +271,7 @@ a = rocket()
 #time.sleep(5)
 #a.servos_set_angle(0)
 """
-while not a.telemetry_downlink_update():
-        pass
-
-#a.advance_state()
+a.log_data_start()
+a.ser.write("1000".encode())
 while True:
-    #a.ser.read_all()
-    while not a.telemetry_downlink_update():
-        pass
-    #a.advance_state()
-    #time.sleep(1)
-    #a.telemetry_downlink_update()
-    print(a.lat)
-
-    #print(time.time())
-    #time.sleep(1)
+    a.telemetry_downlink_update()
