@@ -322,8 +322,18 @@ class RocketUI(QWidget):
         self.status_label.setText("zero_servos sent")
 
     def advance_state(self):
-        if hasattr(self.rocket, "advance_state"): self.rocket.advance_state()
-        self.status_label.setText("advance_state sent")
+        confirm = QMessageBox.question(
+            self, "Confirm Advance State",
+            "Advance state will increment the onboard state machine. Are you sure?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                self.rocket.advance_state()
+                self.status_label.setText("Sent advance_state command (safe).")
+            except Exception as e:
+                QMessageBox.critical(self, "Command Error", f"advance_state failed: {e}")
+
 
     def set_servo_angle(self):
         try:
@@ -360,6 +370,7 @@ class RocketUI(QWidget):
         self.zero_servos_btn.setEnabled(connected)
         self.advance_state_btn.setEnabled(connected)
         self.set_servo_btn.setEnabled(connected)
+        self.pd_activate_btn.setEnabled(connected)
 
 def main():
     app = QApplication(sys.argv)
