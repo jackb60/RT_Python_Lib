@@ -4,6 +4,7 @@ from enum import Enum
 import time 
 import os
 import csv
+import sys
 
 class state(Enum):
     GROUND_TESTING = 0
@@ -11,11 +12,12 @@ class state(Enum):
     FLIGHT = 2
     APOGEE = 3
     DISREEF = 4
+    END = 5
 
 class rocket:
     def __init__(self):
         self.pid = [0, 0, 0] #p, i, d
-        self.ser = serial.Serial('COM11', 115200, timeout=1)
+        self.ser = None# serial.Serial('COM11', 115200, timeout=1)
         self.logging = False
         self.file = None
         self.csv_writer = None
@@ -32,7 +34,7 @@ class rocket:
         self.heading = 0 #deg
         self.gps_fix = False
         self.lat = 0
-        self.long = 0
+        self.lon = 0
         self.gpsalt = 0 #m
         self.pdop = 0
         self.hdop = 0
@@ -68,6 +70,8 @@ class rocket:
     Returns: False if failed (no data/bad data), True if success
     """
     def telemetry_downlink_update(self):
+        if self.ser is None or not self.ser.is_open:
+            return False
         if self.ser.in_waiting == 0:
             return False
         else:
@@ -239,7 +243,7 @@ class rocket:
                 data = [
                     time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
                     self.barofilteredalt, self.barofilteredvelo, self.temp, self.gyro,
-                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.long, self.gpsalt,
+                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.lon, self.gpsalt,
                     self.pdop, self.hdop, self.vdop, self.flight_time, self.last_rec,
                     self.yaw_gyro_int, self.pitch_gyro_int, self.roll_gyro_int,
                     self.batt_voltage, str(self.state), self.pktnum, self.rssi,
@@ -337,38 +341,28 @@ class rocket:
                 chksum %= (256 * 256)
         return chksum
 
+    def connect_serial(self, port=None):
+        """
+        Try to open the serial port. Returns (True, None) on success,
+        (False, errmsg) on failure.
+        """
+        if port is not None:
+            self.serial_port = port
+        if self.serial_port is None:
+            return False, "No serial port specified"
 
-a = rocket()
-"""
-a.log_data_start()
-start = time.time()
-while time.time() - start < 5:
-    a.telemetry_downlink_update()
-#a.arm_pyros([0,1,2,3,4,5])
-#a.fire_pyros([0,1,2,3,4,5,6,7])
+        try:
+            self.ser = serial.Serial(self.serial_port, 115200, timeout=1)
+            return True, None
+        except Exception as e:
+            self.ser = None
+            return False, str(e)
 
-a = rocket()
-#a.zero_roll()
-#a.zero_alt()
-#a.arm_pyros([2])
-#a.fire_pyros([2])
-#a.zero_roll()
-
-#time.sleep(5)
-#a.servos_set_angle(0)
-"""
-while not a.telemetry_downlink_update():
-        pass
-
-#a.advance_state()
-while True:
-    #a.ser.read_all()
-    while not a.telemetry_downlink_update():
-        pass
-    #a.advance_state()
-    #time.sleep(1)
-    #a.telemetry_downlink_update()
-    print(a.lat)
-
-    #print(time.time())
-    #time.sleep(1)
+    def disconnect_serial(self):
+        """Close serial port if open."""
+        try:
+            if self.ser is not None and self.ser.is_open:
+                self.ser.close()
+            self.ser = None
+        except Exception:
+            self.ser = None
