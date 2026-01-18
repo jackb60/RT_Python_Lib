@@ -1,12 +1,20 @@
 import math
 import serial
 import struct
+import platform
 
 gps_lat = 42.360370
 gps_long = -71.093554
 
+isWin = platform.system() == "Windows"
+
+MAC_HARDWARE_PORT = "/dev/cu.Bluetooth-Incoming-Port"
+WIN_HARDWARE_PORT = "COM11"
+
+HARDWARE_PORT = WIN_HARDWARE_PORT if isWin else MAC_HARDWARE_PORT
+
 class pointer:
-    def __init__(self, port="COM11", baud=115200):
+    def __init__(self, port=HARDWARE_PORT, baud=115200):
         self.port = port
         self.baud = baud
         self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
