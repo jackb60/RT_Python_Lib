@@ -14,6 +14,7 @@
 \definecolor{g}{HTML}{38761D}
 \definecolor{r}{HTML}{AB0000}
 \definecolor{k}{HTML}{000000}
+\definecolor{p}{HTML}{6B009A}
 \usepackage{listings}
 
 \definecolor{codegreen}{HTML}{38761D}
@@ -21,6 +22,10 @@
 \definecolor{codegray}{rgb}{0.2,0.2,0.2}
 \definecolor{codepurple}{HTML}{AB0000}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+\usepackage{chngcntr}
+\counterwithin{equation}{section} 
+\counterwithin{figure}{section} 
+
 
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{white},   
@@ -59,40 +64,40 @@
 	~~~~~~~~~~~~\includegraphics[width=0.45\textwidth]{etc/rtlogo.pdf}
 \end{center}
 \end{multicols}
-~\\[-5em]
+~\\[-2em]
 \section*{Instructions}
 {\tt 
 This manual is for use on Project Zephyrus flights, to be printed for launch in a minimum of $\boxed{\texttt{2}}$ copies, one for the Telemetry Lead, and another for the Telemetry Deputy. It is to be read prior to launch by all members involved in the Ground Station, Away Station, and Avionics/Structures Lead roles. At each of the Away Station(s) and Ground Station, $\boxed{\tt 2}$ copies must be printed and be available for the site lead and deputy to access prior to, during, and after flight. The personnel whose mastery of this document's contents is listed below:
 \begin{itemize}
-	\item \color r {\bf Avionics Lead}\hfill (Sections 1-9)\color k
-	\item \color b{\bf Ground Station Lead}\hfill (Sections 1-2, 4-6, 8)\color k
-	\item \color g {\bf Ground Station Deputy} \hfill(Sections 1-2, 4-6)\color k
-	\item \color b{\bf Away Station Lead}\hfill (Sections 3-6, 9)\color k
-	\item \color g{\bf Away Station Deputy}\hfill (Sections 3-6, 9)\color k
-	\item \color b{\bf Simulation Lead} \hfill(Sections 1-10)\color k
-	\item \color r{\bf Structures Lead} \hfill(Sections 1, 4-6)\color k
+	\item \color r {\bf Avionics Lead}\\(Sections 1-9)\color k
+	\item \color b{\bf Ground Station Lead}\\ (Sections 1-2, 4-6, 8)\color k
+	\item \color g {\bf Ground Station Deputy} \\(Sections 1-2, 4-6)\color k
+	\item \color b{\bf Away Station Lead}\\ (Sections 3-6, 9)\color k
+	\item \color g{\bf Away Station Deputy}\\ (Sections 3-6, 9)\color k
+	\item \color b{\bf Simulation Lead} \\(Sections 1-10)\color k
+	\item \color r{\bf Structures Lead} \\(Sections 1, 4-6)\color k
 \end{itemize}
 
 \begin{multicols}{2}
 \tableofcontents
 \end{multicols}
-\vfill
+
 
 }
-\section{Avionics Setup Instructions}
+\newpage\section{Avionics Setup Instructions}
 \subsection{Avionics Bay}
 \subsection{Fin Control}
 \subsection{Airbrakes Module}
 \subsection{Inter-Subsystem Connections}
-\section{Ground Station Setup Instructions}
+\newpage\section{Ground Station Setup Instructions}
 \subsection{Telemetry Reception}
 \subsection{Live Video Reception}
-\section{Away Station Setup Instructions}
+\newpage\section{Away Station Setup Instructions}
 \subsection{Antenna Pointer Assembly}
 \subsection{Antenna Pointer Setup}
-\section{Pre-Flight Procedures}
+\newpage\section{Pre-Flight Procedures}
 \subsection{Go-No Go Criteria}
-\section{In-Flight Procedures}
+\newpage\section{In-Flight Procedures}
 \subsection{Expected Behavior}
 \subsection{Flight Detection Failure Procedure}
 {\color r TLDR advance state manually}
@@ -100,23 +105,227 @@ This manual is for use on Project Zephyrus flights, to be printed for launch in 
 {\color r TLDR assure visual apogee +1 second, arm and fire pyros manually; enter APOGEE state/\verb|DISREEF_AWAIT| state manually}
 \subsection{Lost Connection Procedure}
 {\color r TLDR cooked, antenna proc maybe}
-\section{Post-Flight Procedures}
-\section{Onboard Electronics Documentation}
+\newpage\section{Post-Flight Procedures}
+\newpage\section{Onboard Electronics Documentation}
 \subsection{Onboard Hardware Documentation}
 \subsection{Onboard Software Documentation}
-\section{Ground Station Documentation}
+\newpage\section{Ground Station Documentation}
 \subsection{Ground Station Hardware}
 \subsection{Ground Station Software}
-\section{Away Station Documentation}
+\newpage\section{Away Station Documentation}
 \subsection{Away Station Hardware}
 \subsection{Away Station Software}
-\section{FC Simulation Documentation}
+\newpage\section{FC Simulation Documentation}
 \subsection{Usage Instructions}
 \subsection{Usage Examples}
 \subsection{FC Simulation Framework}
 \subsection{OR Simulation Framework}
 \subsection{Python Scripting Framework}
-\section{Notes from Xanthus Launch}
+\newpage\section{Airbrakes Control Algorithm}
+\begin{multicols}{2}
+
+\subsubsection{Theory}
+Consider a rocket of mass $m$ moving through air of density $\rho$. Let $x$ be the vertical motion. We approximate the rocket to move in a purely vertical fashion, in order to simplify calculations. The differential equation governing the rocket's motion is
+\begin{align}
+	m\ddot x = -mg -\frac{\rho C_{D_{\rm rkt}}A_{\rm ref}}{2}\dot x^2
+\end{align}
+We rearrange to obtain
+\begin{align}
+	\ddot x  = -g-\xi\dot x^2~:~~~\xi \equiv \frac{\rho C_{D_{\rm rkt}}A_{\rm ref}}{2m}
+\end{align}
+Let $\Delta \equiv \left(t-t_{\rm apog}\right)$. This is a nonlinear differential equation without closed form, and so we seek to approximate its solution $x$ as follows, knowing that $\ddot x=-g$ and $\dot x=0$ at apogee:
+\begin{align}
+	\dot x(t)\approx a\Delta^3 + b\Delta^2 - g\Delta
+\end{align}
+so that
+\begin{align}
+	\ddot x(t) \approx 3a\Delta^2 + 2b\Delta - g
+\end{align}
+and 
+\begin{align}
+	x(t)&\approx \frac a4\Delta^4 + \frac b3\Delta^3 - \frac g2\Delta^2 + x_0
+\end{align}
+where $x_0$ is the height at apogee. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{etc/airbrakes/plot_noAirbrakes.pdf}	
+\caption{Fit $\tilde{\dot x}$ onto the {\color b blue} velocity function of time simulator output. 13 points between the two vertical dotted lines were used to find the fit, for $t_{\rm apog}=35.5\rm ~s$. {\color r Red} shows the derivative of the fit; {\color p purple} shows the integral, with $x_0$ calculated from the right dotted line intersection with the purple curve. The difference between the predicted apogee altitude $\tilde x_0$ and the true apogee altitude $x_0$ is 3.5 m.}
+\end{figure}
+\end{multicols}
+\begin{multicols}{2}
+From the figure at right we can deduce that this method is appropriate, assuming the $t_{\rm apog}$ apogee time can be properly estimated. For a linear least-squares fitter, the only kind feasible on the onboard flight computer, the $t_{\rm apog}$ must not be fitted at the same time as $a$ and $b$; a simulation output cannot be used either since this would prevent flexibility in case of turbulence or ill-modeled motor performance. Thus, we use the simulator output $_0t_{\rm apog}$ to generate three possibilities of apogee times, and fit a quintic to the acceleration of the following form to decide between the apogee times:
+\begin{align}
+	\tilde a(t) = a_0(t-t_{\rm apog})^5 - g
+\end{align}
+The correlation coefficient $R^2$ is used to choose the best apogee time out of $[_0t_{\rm apog}-1,~_0t_{\rm apog},~_0t_{\rm apog}+1]$. Then, a shift of $\tt AIRBRAKES\underline{~}T\underline{~}APOG\underline{~}FUDGEDIFF$ is introduced, since the cubic approximation above functions best with an overestimated $\tilde t_{\rm apog}$. Once the apogee time and altitude are correctly predicted, energy conservation is used to model the effect of the airbrakes on the apogee altitude\footnote{ Note that we approximate the apogee time as remaining unchanged.}. The work done on the rocket by some airbrakes area function of time $A(t)$ is 
+\begin{align}
+		W = \int F~dx = \int \frac{C_D\rho A(t)\dot x^2}{2}~dx 
+\end{align}
+This will correspond to a change in altitude $\Delta x$ in the rocket apogee height:
+\begin{align}
+	\int \frac{C_D\rho A(t)\dot x^2}{2}~dx  = mg(\Delta x)
+\end{align}
+A rapid change of variables using $\dot x dt = dx$ gives
+\begin{align}
+	\int \frac{C_D\rho A(t)\dot x^3}{2}~dt  = mg(\Delta x)
+\end{align}
+and so
+\begin{align}
+	\int A(t)\dot x^3~dt = \frac{2mg(\Delta x)}{C_D\rho}
+\end{align}
+We are free to choose a model for $A(t)$ that is convenient to integrate and also physically actuate on the rocket. In this vein, we choose $A(t)$ to be a constant $A_0$ with a small ramp that lasts a half-second. As the integration will be quite tedious, we ignore the ramp in deriving the required airbrakes area, as that will be accounted for in the ``fudge factor'' that also accounts for lack of pure vertical motion, as well as other simplified phenomena. 
+\end{multicols}
+\newpage
+\noindent Thus, we solve
+\begin{align}
+	A_0 = \frac{2mg(\Delta x)}{C_D\rho} \left(\int\limits_{t_0}^{t_{\rm apog}} \left((a(t-t_{\rm apog})^3 + b(t-t_{\rm apog})^2 - g(t-t_{\rm apog})\right)^3~dt\right)^{-1}
+\end{align}
+The integral expression gives
+\begin{align}
+	\int\limits_{t_0}^{t_1}\dot x^3~dt = -\Bigg(
+& \frac{a^{3}}{10}\,(t_0 - t_1)^{10}
++ \frac{a^{2} b}{3}\,(t_0 - t_1)^{9}
++ \frac{3ab^{2} - 3a^{2}g}{8}\,(t_0 - t_1)^{8}\nonumber \\
+& + \frac{b^{3} - 6abg}{7}\,(t_0 - t_1)^{7}
++ \frac{ag^{2} - b^{2}g}{2}\,(t_0 - t_1)^{6}
++ \frac{3bg^{2}}{5}\,(t_0 - t_1)^{5}
+- \frac{g^{3}}{4}\,(t_0 - t_1)^{4}
+\Bigg)
+\end{align}
+and so if $T\equiv t_{\rm apog}-t_0$, 
+\begin{align}
+	A_0 = f\cdot \left(-\frac{2mg(\Delta x)}{C_D\rho}\cdot \frac{T^{-4}}{\frac{a^{3}}{10}\,T^{6} + \frac{a^{2} b}{3}\,T^{5} + \frac{3ab^{2} - 3a^{2}g}{8}\,T^{4} + \frac{b^{3} - 6abg}{7}\,T^{3} + \frac{ag^{2} - b^{2}g}{2}\,T^{2} + \frac{3bg^{2}}{5}\,T - \frac{g^{3}}{4}}\right)
+\end{align}
+where $f$ is the aforementioned ``fudge factor,'' whose value is generally close to 3, tuned prior to launch. The latest values appear in the table below:
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|c|c|c|}
+\hline $\bs m$ (kg) & \bf $\bs f$ for $\bs {\Delta x < 40}$ m & \bf $\bs f$ for $\bs {\Delta x \geq 40}$ m\\\hline\hline
+51.71 & 3.2 & 3.5\\\hline
+\end{tabular}
+~\\[1em]\caption{``Fudge Factors'' for Airbrakes Algorithm $\color r\tt \langle AS~OF~JAN~20~2026\rangle$}
+\end{table}
+\subsubsection{Onboard Algorithm}
+\noindent We have implemented the Airbrakes Control Algorithm using a state machine with the following states (encoded in {\tt AirbrakesControllerState}):
+\begin{multicols}{4}
+\begin{itemize}\tt
+	\item  DISABLED
+	\item PREP
+	\item PREPROCESS
+	\item \verb|WAIT_FOR_START|
+	\item CONTROLLING\verb|_|RAMP
+	\item CONTROLLING\verb|_|PLATEUAU
+	\item DONE
+	\item INFEASIBLE
+\end{itemize}
+\end{multicols}
+\noindent Flow from one state to the next is governed according to the following diagram:
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{etc/airbrakes/statemachine.pdf}	
+\caption{Airbrakes Controlled State Flow.}
+\end{figure}
+\noindent We detail the exact procedure.
+\begin{itemize}
+	\item {\color[HTML]{3C78D8}\underline{\tt  DISABLED}}\\[.5em]
+	The Airbrakes controller starts in this state. No action is taken until the method {\tt shouldStartAirbrakesControlPrep()} returns {\tt true}. \\
+	\item {\color[HTML]{A64D79} \underline{\tt PREP}}\\[.5em]
+	The {\tt PREP} stage consists of sampling velocity $\dot x(t)$ and acceleration $\ddot x(t)$ a total of $\tt nMeasurements$ times, with timestamps saved as well. Should the \verb|START_AIRBRAKES_PREPROC_TIME| marker have arrived prior to the full sample acquisition, the controller moves on to the {\tt PREPROCESS} state. \\
+	\item {\color[HTML]{134F5C} \underline{\tt PREPROCESS}}\\[.5em]
+	The {\tt PREPROCESS} stage consists of choosing the apogee time from the list of possibilities, according to the $R^2$ correlation coefficient of the quintic fit to acceleration ($y_i$ points). The quintic fit is conducted by linear least squares, according to
+	\begin{align}
+		\tilde a = \frac{\sum_i (y_i+g)(t_i-t_{\rm apog})^5}{\sum_i (t_i-t_{\rm apog})^{10}}
+	\end{align}
+	and
+	\begin{align}
+		R^2 = 1 - \frac{ \sum_i y_i - f(x_i;\tilde a)}{\sum_i(y_i-\overline y)^2}
+	\end{align}
+	The apogee time $t_{\rm apog}$ is decided to be $\tilde t_{\rm apog}+\tt AIRBRAKES\underline{~}T\underline{~}APOG\underline{~}FUDGEDIFF$. Next, the velocity is fitted to 
+	\begin{align}
+		\dot{x}(t) = a(t-t_{\rm apog})^3 + b(t-t_{\rm apog})^2 - g(t-t_{\rm apog})
+	\end{align}
+	This is again performed with linear least squares. The $X^TX$ matrix is
+	\begin{align}
+		X^TX = \begin{bmatrix}
+			\displaystyle\sum_i(t_i-t_{\rm apog})^6 &&\displaystyle \sum_i(t_i-t_{\rm apog})^5 \\[2em]
+			\displaystyle\sum_i(t_i-t_{\rm apog})^5 && \displaystyle\sum_i(t_i-t_{\rm apog})^4
+		\end{bmatrix}
+	\end{align}
+	The $X^T\bs y$ matrix given by
+	\begin{align}
+		X^T\bs y = \begin{bmatrix}
+		\displaystyle	\sum_i (t_i-t_{\rm apog})^3(\dot{x}_i + g(t_i-t_{\rm apog}))\\[2em]
+			\displaystyle\sum_i (t_i-t_{\rm apog})^2(\dot{x}_i + g(t_i-t_{\rm apog}))
+		\end{bmatrix}
+	\end{align}
+	The two parameters $\tilde a$ and $\tilde b$ are thus
+	\begin{align}
+		\begin{bmatrix}
+			\tilde a \\ \tilde b
+		\end{bmatrix} = \left(X^TX\right)^{-1}X^T\bs y
+	\end{align}
+	Next, the apogee altitude is obtained from
+	\begin{align}
+		x_0 = x(t_0) - \frac a4(t_0-t_{\rm apog})^4 + \frac b3(t_0-t_{\rm apog})^3 - \frac g2(t_0-t_{\rm apog})^2
+	\end{align}
+	The desired $\Delta x$ is obtained from the apogee prediction and the desired altitude, either obtained by rounding: 
+	\begin{align}
+		x_{\rm desired} = \left\lfloor \frac{x_0}{n}\right\rfloor n
+	\end{align}
+	where $n$ is some integer detailing the up-to-the-closest quantity to round to. The airbrakes start time is 
+	\begin{align}
+		\tt airbrakesCtrlStartTime = currentTime + AIRBRAKES\underline{~}TIME\underline{~}DELAY
+	\end{align}
+	The airbrakes area required is
+	\begin{align}
+		A_0 = {\tt reqDeployedAreaAirbrakes(currentTime+AIRBRAKES\underline{~}TIME\underline{~}DELAY,}~\Delta x)
+	\end{align}
+	Should $A_0 > 1$, the state progresses to {\color[HTML]{AB0000} \underline{\tt INFEASIBLE}}. Otherwise, the required $A_0$ is stored, and the state progresses to {\color[HTML]{38761D} \underline{\tt WAIT\underline{~}FOR\underline{~}START}}.
+	 \\
+	\item {\color[HTML]{38761D} \underline{\tt WAIT\underline{~}FOR\underline{~}START}}\\[.5em]
+	Simply wait for the flight time to be past {\tt airbrakesCtrlStartTime}. The state progresses to {\color[HTML]{CD6666} \underline{\tt CONTROLLING\underline{~}RAMP}}.\\
+	\item {\color[HTML]{CD6666} \underline{\tt CONTROLLING\underline{~}RAMP}}\\[.5em]
+	The airbrakes area $A(t)$ here is given by
+	\begin{align}
+		A(t) = 2A_0(t-{\tt airbrakesCtrlStartTime})
+	\end{align}
+	The state ends after 0.5 seconds, progressing to {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEUAU}}.\\
+	\item {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEUAU}}\\[.5em]
+	The airbrakes area $A(t)$ here is given by
+	\begin{align}
+		A(t) = A_0
+	\end{align}
+	The state ends at apogee, progressing to {\color[HTML]{08357E} \underline{\tt DONE}}.\\
+	\item {\color[HTML]{08357E} \underline{\tt DONE}}\\[.5em]
+	Nothing occurs in this state.\\
+	\item {\color[HTML]{AB0000} \underline{\tt INFEASIBLE}}\\[.5em]
+	Nothing occurs in this state.\\
+\end{itemize}
+\subsubsection{Values of Constants $\color r\tt\langle LAST~UPDATED~JAN~20\rangle$}
+\begin{lstlisting}[language=java]
+double EARLIEST_START_AIRBRAKES_PREP_TIME = 4.0;
+double START_AIRBRAKES_PREP_VEL           = 400.0;
+double START_AIRBRAKES_PREPROC_TIME       = 12.0;
+double AIRBRAKES_TIME_DELAY               = 1.0;
+int    AIRBRAKES_N_MEASUREMENTS           = 13;
+int    AIRBRAKES_MEASUREMENT_FREQ_HZ      = 5;
+int    AIRBRAKES_SIMULATION_T_APOG        = 34;
+double AIRBRAKES_T_APOG_FUDGEDIFF         = 1.5;
+double fudge_factor                       = 3.2;
+double fudge_factor_2                     = 3.5;
+int    roundToHowMuch                     = 1000;
+double AIRBRAKES_MAX_AREA                 = 0.0066;
+\end{lstlisting}
+
+
+
+
+
+
+
+
+\newpage\section*{Notes from Xanthus Launch}
 \begin{verbatim}
 	* Possibly detect flight from remote rocket without human assistance
     * FLIGHT -> FLIGHT, APOGEE will be detected asap anyway
@@ -125,3 +334,53 @@ This manual is for use on Project Zephyrus flights, to be printed for launch in 
     * GROUND STATION SWITCH: if enabled, allows for <something>
 \end{verbatim}
 \end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

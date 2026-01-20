@@ -2,8 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import ast
 
+# For LaTeX-powered plotting:
+from matplotlib import rcParams
+rcParams['font.family'] = 'serif'
+rcParams['text.usetex'] = True
+rcParams['font.size'] = 14
+
+
 # === CONFIG ===
-filename = "Roll_Control_Test_1_14.csv"
+filename = "/Users/mdn/Downloads/telemetry_xanthusflight3.csv"
 
 headers = [
     "time", "pyros", "servos", "accelerometer", "barometer",
@@ -79,8 +86,8 @@ else:
 
     for ax, col in zip(axes, selected_cols):
         # Plot the data
-        ax.plot(df["time"], df[col], label=col, color="tab:blue")
-        ax.set_ylabel(col)
+        ax.plot(df["time"], df[col], label="\\verb|{}|".format(col), color="tab:blue")
+        ax.set_ylabel("\\verb|{}|".format(col))
         ax.grid(True)
         ax.legend(loc="upper left")
 
@@ -104,6 +111,6 @@ else:
         ax.autoscale()
 
     plt.xlabel("Time (s)")
-    plt.suptitle("Telemetry Data (auto-scaled per variable, state overlay)", fontsize=14)
+    plt.suptitle("\\sc Telemetry Data (auto-scaled per variable, state overlay)", fontsize=14)
     plt.tight_layout()
     plt.show()
