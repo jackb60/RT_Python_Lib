@@ -52,7 +52,7 @@
 \usepackage{enumitem}
 
 \title{\kern-2cm\sc Flight Procedures Manual\\[.5em]Project \underline{Zephyrus}}
-\author{\sc J. Bolte, M. Nichitiu}
+\author{\sc J. Bolte, M. Nichitiu, S. Parke}
 
 \date{\sc MIT Rocket Team Avionics\\[.5em] Last Updated: \bf \color b \tt JAN 18 2026}
 
@@ -210,14 +210,14 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 \noindent We have implemented the Airbrakes Control Algorithm using a state machine with the following states (encoded in {\tt AirbrakesControllerState}):
 \begin{multicols}{4}
 \begin{itemize}\tt
-	\item  DISABLED
-	\item PREP
-	\item PREPROCESS
-	\item \verb|WAIT_FOR_START|
-	\item CONTROLLING\verb|_|RAMP
-	\item CONTROLLING\verb|_|PLATEUAU
-	\item DONE
-	\item INFEASIBLE
+	\item {\color[HTML]{3C78D8}{\tt  DISABLED}}
+	\item {\color[HTML]{A64D79}{\tt PREP}}
+	\item {\color[HTML]{134F5C}{\tt PREPROCESS}}
+	\item {\color[HTML]{38761D}{\tt WAIT\underline{~}FOR\underline{~}START}}
+	\item {\color[HTML]{CD6666}{\tt CONTROLLING\underline{~}RAMP}}
+	\item {\color[HTML]{96094F}{\tt CONTROLLING\underline{~}PLATEAU}}
+	\item {\color[HTML]{08357E}{\tt DONE}}
+	\item {\color[HTML]{AB0000}{\tt INFEASIBLE}}
 \end{itemize}
 \end{multicols}
 \noindent Flow from one state to the next is governed according to the following diagram:
@@ -291,7 +291,7 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 		A(t) = 2A_0(t-{\tt airbrakesCtrlStartTime})
 	\end{align}
 	The state ends after 0.5 seconds, progressing to {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEUAU}}.\\
-	\item {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEUAU}}\\[.5em]
+	\item {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEAU}}\\[.5em]
 	The airbrakes area $A(t)$ here is given by
 	\begin{align}
 		A(t) = A_0
