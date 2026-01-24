@@ -6,7 +6,7 @@ import time
 
 isWin = platform.system() == "Windows"
 
-MAC_HARDWARE_PORT = "/dev/cu.Bluetooth-Incoming-Port"
+MAC_HARDWARE_PORT = "/dev/cu.usbmodem_142101"
 WIN_HARDWARE_PORT = "COM10"
 
 HARDWARE_PORT = WIN_HARDWARE_PORT if isWin else MAC_HARDWARE_PORT
