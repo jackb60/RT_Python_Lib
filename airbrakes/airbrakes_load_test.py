@@ -2,7 +2,7 @@ import airbrakes_dummy
 import time
 import pandas as pd
 
-df = pd.read_csv("airbrakes_input.csv")
+df = pd.read_csv("c:/Users/jackb/RT_Python_Lib/airbrakes/dat/6225/airbrakes_input.csv")
 
 times = df["Time"].tolist()
 velocities = df["Velocity"].tolist()
@@ -18,11 +18,12 @@ begin = time.time()
 t_index = 0
 
 while time.time() - begin < times[-1] + 1:
-    if time.time() - begin >= times[t_index]:
-        airbrakes.send_velo(velocities[t_index])
-        airbrakes.send_accel(accelerations[t_index])
-        airbrakes.send_apogee(apogees[t_index])
-        t_index += 1
+    if not t_index >= len(times):
+        if time.time() - begin >= times[t_index] or t_index == len(times) - 1:
+            airbrakes.send_velo(velocities[t_index])
+            airbrakes.send_accel(accelerations[t_index])
+            airbrakes.send_apogee(apogees[t_index])
+            t_index += 1
     airbrakes.read_response()
 
 df = pd.DataFrame({
