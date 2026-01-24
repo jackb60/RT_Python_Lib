@@ -1,0 +1,17 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Read files
+pred = pd.read_csv("airbrakes_input.csv")   # columns: Time, Predicted DP
+actual = pd.read_csv("airbrakes_output.csv")    # columns: Time, Actual DP
+
+# Plot
+plt.figure()
+plt.plot(pred["Time"], pred["Predicted DP"], label="Predicted DP")
+plt.plot(actual["Time"], actual["Actual DP"], label="Actual DP")
+
+plt.xlabel("Time")
+plt.ylabel("DP")
+plt.legend()
+plt.tight_layout()
+plt.show()
