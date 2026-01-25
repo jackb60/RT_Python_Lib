@@ -2,7 +2,8 @@ import airbrakes_dummy
 import time
 import pandas as pd
 
-df = pd.read_csv("c:/Users/jackb/RT_Python_Lib/airbrakes/dat/6225/airbrakes_input.csv")
+#df = pd.read_csv("c:/Users/jackb/RT_Python_Lib/airbrakes/dat/6225/airbrakes_input.csv")
+df = pd.read_csv("dat/6225/airbrakes_input.csv")
 
 times = df["Time"].tolist()
 velocities = df["Velocity"].tolist()
