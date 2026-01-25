@@ -6,7 +6,7 @@ import time
 
 isWin = platform.system() == "Windows"
 
-MAC_HARDWARE_PORT = "/dev/cu.usbmodem21102"
+MAC_HARDWARE_PORT = "/dev/cu.usbmodem21202"
 WIN_HARDWARE_PORT = "COM10"
 
 HARDWARE_PORT = WIN_HARDWARE_PORT if isWin else MAC_HARDWARE_PORT
