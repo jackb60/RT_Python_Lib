@@ -9,6 +9,7 @@ times = df["Time"].tolist()
 velocities = df["Velocity"].tolist()
 accelerations = df["Acceleration"].tolist()
 apogees = df["Apogee"].tolist()
+altitudes = df["Altitude"].tolist()
 
 
 airbrakes = airbrakes_dummy.aribrakes_dummy()
@@ -24,6 +25,7 @@ while time.time() - begin < times[-1] + 1:
             airbrakes.send_velo(velocities[t_index])
             airbrakes.send_accel(accelerations[t_index])
             airbrakes.send_apogee(apogees[t_index])
+            airbrakes.send_altitude(altitudes[t_index])
             t_index += 1
     airbrakes.read_response()
 

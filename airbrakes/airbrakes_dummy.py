@@ -52,6 +52,14 @@ class aribrakes_dummy:
             data[2] = 0x01
         data[6] = self.calc_checksum(data)
         self.ser.write(data)
+
+    def send_altitude(self, altitude):
+        data = bytearray(7)
+        data[0] = 0xAA
+        data[1] = 0x04
+        struct.pack_into('<f', data, 2, altitude)
+        data[6] = self.calc_checksum(data)
+        self.ser.write(data)
     
     def start_sim(self):
         data = bytearray(7)
