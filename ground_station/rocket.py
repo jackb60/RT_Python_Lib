@@ -59,7 +59,7 @@ class rocket:
     
     def log_data_start(self):
         self.logging = True
-        self.file = open(f"telemetry_{time.time()}.csv", "w", newline='')
+        self.file = open(f"telemetry/telemetry_{time.time()}.csv", "w", newline='')
         self.csv_writer = csv.writer(self.file)
         header = [
                     "time", "pyrostat", "servostat", "accel", "barometer",
