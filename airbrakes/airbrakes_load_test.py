@@ -11,6 +11,35 @@ accelerations = df["Acceleration"].tolist()
 apogees = df["Apogee"].tolist()
 altitudes = df["Altitude"].tolist()
 
+"""
+
+header = [
+                    "time", "pyrostat", "servostat", "accel", "barometer",
+                    "baro_alt_filtered", "baro_vel_filtered", "temp", "gyro",
+                    "magnetometer", "heading", "gps_fix_status", "lat", "lon", "gpsalt",
+                    "pdop", "hdop", "vdop", "flight_time", "last_rec",
+                    "yaw_gyro_int", "pitch_gyro_int", "roll_gyro_int",
+                    "batt_voltage", "rocket_state", "pktnum", "rssi",
+                    "armed_pyros", "fired_pyros", "badpackets", "rxrssi",
+                    "accel_integrated_velo", "baro_max_alt", "gps_max_alt"
+                ]
+
+See rocket.py in /ground_station/
+
+data = [
+                    time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
+                    self.barofilteredalt, self.barofilteredvelo, self.temp, self.gyro,
+                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.lon, self.gpsalt,
+                    self.pdop, self.hdop, self.vdop, self.flight_time, self.last_rec,
+                    self.yaw_gyro_int, self.pitch_gyro_int, self.roll_gyro_int,
+                    self.batt_voltage, str(self.state), self.pktnum, self.rssi,
+                    self.armed, self.fired, self.badpackets, self.rxrssi,
+                    self.accel_integrated_velo, self.baro_max_alt, self.gps_max_alt
+                ]
+
+"""
+
+
 
 airbrakes = airbrakes_dummy.aribrakes_dummy()
 
