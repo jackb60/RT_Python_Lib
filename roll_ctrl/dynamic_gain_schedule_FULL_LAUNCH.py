@@ -10,17 +10,25 @@
 #   G_d* computed from the " * " values.
 #
 # Units:
-#   altitude input: feet (change if you want)
-#   velocity input: m/s (change if you want)
+#   altitude input: meters (AGL expected by caller; model adds LAUNCH_ALT)
+#   velocity input: m/s
 #   rho: kg/m^3, T: K, a: m/s
 
 import math
 
+# Vehicle parameters updated 5 FEB 2026
+Jxx0 = 0.27 # kg * m^2 (Roll MOI initial)
+Jxxf = 0.2  # kg * m^2 (Roll MOI final)
+t_b  = 9.25 # s (Burnout time)
+
+# Velocity floor to prevent Gd -> 0 at liftoff
+V_MIN = 20.0  # m/s
+
 # Atmosphere Model (USSA 1976 model; layers valid up to 120k ft)
-# INPUT: h_m (altitude ASL)
+# INPUT: h_m (altitude AGL; function shifts by LAUNCH_ALT)
 # OUTPUTS: T (temperature), rho (density), a (speed of sound)
-LAUNCH_ALT = 622 # m at FAR Launch site
-LAUNCH_TEMP = 305 # K at FAR Launch site (this is technically supposed to be sea level temp but close enough
+LAUNCH_ALT = 622  # m at FAR Launch site
+LAUNCH_TEMP = 305 # K at FAR Launch site (close enough for this model)
 
 def atmosphere(h_m):
     h_m = h_m + LAUNCH_ALT
@@ -40,8 +48,8 @@ def atmosphere(h_m):
         (32000.0, 47000.0,  0.0028),
     )
 
-    T = LAUNCH_TEMP     # K
-    P = 101325.0   # Pa (model starts from sea-level)
+    T = LAUNCH_TEMP  # K
+    P = 101325.0     # Pa (model starts from sea-level)
 
     for h_base, h_top, L in layers:
         if h_m <= h_top:
@@ -69,8 +77,8 @@ def atmosphere(h_m):
 
 
 # CL_alpha (Lift coefficient slope: stepwise lookup table vs Mach)
-M_EDGES = (0.0, 0.8, 1.2, 2.0, 3.2) # PLACEHOLDERS UNTIL CFD COMPLETE
-CL_STEPS = (4.5, 4.0, 3.2, 2.6, 2.0)  # PLACEHOLDERS UNTIL CFD COMPLETE
+M_EDGES = (0.0, 0.8, 1.2, 2.0, 3.2)  # PLACEHOLDERS UNTIL CFD COMPLETE
+CL_STEPS = (4.5, 4.0, 3.2, 2.6, 2.0) # PLACEHOLDERS UNTIL CFD COMPLETE
 
 def cl_alpha(mach):
     idx = 0
@@ -83,7 +91,6 @@ def cl_alpha(mach):
 
 
 # Jxx schedule (Linear Approximation of Roll MOI versus time)
-
 def Jxx_of_t(t, Jxx0, Jxxf, t_b):
     if t <= 0.0:  return Jxx0
     if t >= t_b:  return Jxxf
@@ -91,16 +98,15 @@ def Jxx_of_t(t, Jxx0, Jxxf, t_b):
 
 
 # Dynamic Gain calculations
-
 def Gd(rho, v, cl_a, Jxx):
-    if Jxx == 0.0: # Catch for somehow passing in zero (should never happen)
+    if Jxx == 0.0:  # Catch for somehow passing in zero (should never happen)
         return 1
     return (rho * v * v * cl_a) / (2.0 * Jxx)
 
 
 def Gd_star(Jxx0, Jxxf, t_b):
     M_star = 3.2
-    h_star = 5000.0  # meters
+    h_star = 5000.0  # meters (AGL in your convention; atmosphere adds LAUNCH_ALT)
 
     T, rho, a = atmosphere(h_star)
     v_star = M_star * a
@@ -111,40 +117,47 @@ def Gd_star(Jxx0, Jxxf, t_b):
 
 
 def dynamic_gain_factor(t, h, v, Jxx0, Jxxf, t_b):
-    Gd_star, v_star, rho_star, T_star = Gd_star(Jxx0, Jxxf, t_b)
+    Gd_star_val, v_star, rho_star, T_star = Gd_star(Jxx0, Jxxf, t_b)
 
     n = len(t)
     gain = [0.0] * n
 
     for i in range(n):
         T, rho, a = atmosphere(h[i])
-        mach = v[i] / a if a > 0.0 else 0.0
+
+        v_eff = v[i]
+        if v_eff < V_MIN:
+            v_eff = V_MIN
+
+        mach = v_eff / a if a > 0.0 else 0.0
         cla = cl_alpha(mach)
         Jxx = Jxx_of_t(t[i], Jxx0, Jxxf, t_b)
-        gd = Gd(rho, v[i], cla, Jxx)
-        gain[i] = Gd_star / gd if gd != 0.0 else 1e300
+        gd = Gd(rho, v_eff, cla, Jxx)
 
-    return gain, Gd_star, v_star, rho_star, T_star
+        gain[i] = Gd_star_val / gd if gd != 0.0 else 0
+
+    return gain, Gd_star_val, v_star, rho_star, T_star
 
 
-#  Example Flight Computer usage
+# Example Flight Computer usage
 if __name__ == "__main__":
-    # Vehicle parameters updated 5 FEB 2026
-    Jxx0 = 0.27 # kg * m^2 (Roll MOI initial)
-    Jxxf = 0.2 # kg * m^2 (Roll MOI final)
-    t_b  = 9.25 # s (Burnout time)
-
     # Compute once at startup
-    Gd_star = Gd_star(Jxx0, Jxxf, t_b)
+    Gd_star_val, v_star, rho_star, T_star = Gd_star(Jxx0, Jxxf, t_b)
 
     # Each FC loop need to have these state variables:
-    t = 7.5         # s (time)
-    h = 12000.0     # m (altitude above ground level (AGL))
-    v = 900.0       # m/s (speed boi)
+    t = 7.5       # s (time)
+    h = 12000.0   # m (altitude AGL)
+    v = 5.0       # m/s (example small; will be floored)
 
-    gd = Gd(t, h, v, Jxx0, Jxxf, t_b)
-    dynamic_gain_factor= Gd_star / gd if gd != 0.0 else 1
+    v_eff = v if v >= V_MIN else V_MIN
+    T, rho, a = atmosphere(h)
+    mach = v_eff / a if a > 0.0 else 0.0
+    cla = cl_alpha(mach)
+    Jxx = Jxx_of_t(t, Jxx0, Jxxf, t_b)
+    gd = Gd(rho, v_eff, cla, Jxx)
 
-    print("Gd* =", Gd_star)
+    dyn_gain_factor = Gd_star_val / gd if gd != 0.0 else 0
+
+    print("Gd* =", Gd_star_val)
     print("Gd  =", gd)
-    print("Dynamic gain factor=", dynamic_gain_factor)
+    print("Dynamic gain factor =", dyn_gain_factor)
