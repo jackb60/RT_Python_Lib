@@ -51,14 +51,14 @@
 \usepackage{bm}
 \usepackage{enumitem}
 
-\title{\kern-2cm\sc Flight Procedures Manual\\[.5em]Project \underline{Zephyrus}}
-\author{\sc J. Bolte, M. Nichitiu, S. Parke}
+\title{~\\[-5em]\sc Flight Procedures Manual\\[.5em]Project \underline{Zephyrus}}
+\author{\sc J. Bolte, C. Casebolt, M. Nichitiu, \\\sc S. Parke}
 
-\date{\sc MIT Rocket Team Avionics\\[.5em] Last Updated: \bf \color b \tt JAN 18 2026}
+\date{\sc MIT Rocket Team Avionics\\[.5em] Last Updated: \bf \color b \tt FEB 17 2026}
 
 \begin{document}
 \begin{multicols}{2}
- \maketitle
+\maketitle
 \begin{center}
 ~\\[-2em]
 	~~~~~~~~~~~~\includegraphics[width=0.45\textwidth]{etc/rtlogo.pdf}
@@ -68,16 +68,20 @@
 \section*{Instructions}
 {\tt 
 This manual is for use on Project Zephyrus flights, to be printed for launch in a minimum of $\boxed{\texttt{2}}$ copies, one for the Telemetry Lead, and another for the Telemetry Deputy. It is to be read prior to launch by all members involved in the Ground Station, Away Station, and Avionics/Structures Lead roles. At each of the Away Station(s) and Ground Station, $\boxed{\tt 2}$ copies must be printed and be available for the site lead and deputy to access prior to, during, and after flight. The personnel whose mastery of this document's contents is listed below:
-\begin{itemize}
+\begin{multicols}{3}
+	\begin{itemize}
+	\item \color r {\bf Team Lead}\\(Sections 1-9)\color k
 	\item \color r {\bf Avionics Lead}\\(Sections 1-9)\color k
+	\item \color r{\bf Structures Lead} \\(Sections 1, 4-6)\color k
 	\item \color b{\bf Ground Station Lead}\\ (Sections 1-2, 4-6, 8)\color k
 	\item \color g {\bf Ground Station Deputy} \\(Sections 1-2, 4-6)\color k
+	\item \color b{\bf Simulation Lead} \\(Sections 1-11)\color k
 	\item \color b{\bf Away Station Lead}\\ (Sections 3-6, 9)\color k
 	\item \color g{\bf Away Station Deputy}\\ (Sections 3-6, 9)\color k
-	\item \color b{\bf Simulation Lead} \\(Sections 1-10)\color k
-	\item \color r{\bf Structures Lead} \\(Sections 1, 4-6)\color k
+	\item \color r {\bf Integration Lead}\\(Sections 1-9)\color k
 \end{itemize}
-
+\end{multicols}
+\hfill
 \begin{multicols}{2}
 \tableofcontents
 \end{multicols}
@@ -122,9 +126,9 @@ This manual is for use on Project Zephyrus flights, to be printed for launch in 
 \subsection{OR Simulation Framework}
 \subsection{Python Scripting Framework}
 \newpage\section{Airbrakes Control Algorithm}
+\textsc{C. Casebolt, M. Nichitiu}~\\[-2em]
 \begin{multicols}{2}
-
-\subsubsection{Theory}
+\subsection{Open Loop: Feedforward}
 Consider a rocket of mass $m$ moving through air of density $\rho$ (following motor burnout). Let $x$ be the vertical motion. We approximate the rocket to move in a purely vertical fashion, in order to simplify calculations. The differential equation governing the rocket's motion is
 \begin{align}
 	m\ddot x = -mg -\frac{\rho C_{D_{\rm rkt}}A_{\rm ref}}{2}\dot x^2
@@ -148,6 +152,7 @@ and
 where $x_0$ is the height at apogee. 
 \begin{figure}[H]
 \centering
+~\\[-6em]
 \includegraphics[width=0.5\textwidth]{etc/airbrakes/plot_noAirbrakes.pdf}	
 \caption{Fit $\tilde{\dot x}$ onto the {\color b blue} velocity function of time simulator output. 13 points between the two vertical dotted lines were used to find the fit, for $t_{\rm apog}=35.5\rm ~s$. {\color r Red} shows the derivative of the fit; {\color p purple} shows the integral, with $x_0$ calculated from the right dotted line intersection with the purple curve. The difference between the predicted apogee altitude $\tilde x_0$ and the true apogee altitude $x_0$ is 3.5 m.}
 \end{figure}
@@ -202,11 +207,138 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 \renewcommand{\arraystretch}{1.4}
 \begin{tabular}{|c|c|c|}
 \hline $\bs m$ (kg) & \bf $\bs f$ for $\bs {\Delta x < 40}$ m & \bf $\bs f$ for $\bs {\Delta x \geq 40}$ m\\\hline\hline
-51.71 & 3.2 & 3.5\\\hline
+51.71 & 4.22 & 4.7\\\hline
 \end{tabular}
-~\\[1em]\caption{``Fudge Factors'' for Airbrakes Algorithm $\color r\tt \langle AS~OF~JAN~20~2026\rangle$}
+~\\[1em]\caption{``Fudge Factors'' for Airbrakes Algorithm $\color r\tt \langle AS~OF~FEB~15~2026\rangle$}
 \end{table}
-\subsubsection{Onboard Algorithm}
+\subsection{Closed Loop: Feedback}
+We have decided that due to uncertainty in the true performance of the Airbrakes hardware, we include a feedback component. The main prerequisite for such a component is accurate projected altitude estimation. 
+
+Using a similar energy-based calculation, we assume that the only work done in rocket vertical motion arises from drag. Take $\bs{\hat x}$ to be the upwards direction. The force balance thus gives
+\begin{align}
+	m\ddot x = -mg - \left(\frac{\rho C_{D_{\rm airbrakes}}A(t)}{2}+c\right)\dot x^2\label{forcebalance}
+\end{align}
+where $c$ is the drag magnitude of the rocket divided by $\dot x^2$:
+\begin{align}
+	c = \frac{F_{D_{\rm rocket}}}{\dot x^2} = \frac{\rho C_{D_{\rm rocket}}A_{\rm ref}}{2}
+\end{align}
+This a constant and can be evaluated prior to flight.
+From the balance, we have that the work done by the total drag is
+\begin{align}
+	W_{\rm drag} = \int \limits_{h_0}^{h_f}-F_D~dx
+\end{align}
+Since $\dot x\neq 0$ in the open interval of integration (only at the bound), we can perform the following change of variables:
+\begin{align}
+	\ddot x = \frac{d\dot x}{dt} = \frac{d\dot x}{dx}\frac{dx}{dt} = \frac{d\dot x}{dx}\dot x~\Rightarrow~dx = \frac{\dot x}{\ddot x}d\dot x
+\end{align}
+This allows us to write the energy conservation equation below, for some initial state $\{x=h_0;\dot x = v_0\}$ to the final state $\{x=h_f,\dot x = 0\}$:
+\begin{align}
+	mgh_f = \frac 12mv_0^2 + mgh_0 + \int\limits_{v_0}^0 \left(-F_D\frac{\dot x}{\ddot x}\right)~d\dot x
+\end{align}
+From the force balance in (\ref{forcebalance}) and the drag force expression, we have that the integral becomes a functional depending on the airbrakes area profile $A(t)$. Let $\alpha(t) = (\rho C_{D_{\rm airbrakes}}A(t))/2$:
+\begin{align}
+	I[v_0,A(t)] = \int\limits_{v_0}^0 \frac{(\alpha_0+c)\dot x^3}{\displaystyle(\alpha_0+c)\frac{\dot x^2}{m} + g}~d\dot x
+\end{align}
+We choose a constant $A(t) = A_0$ (which implies $\alpha=\alpha_0 = (\rho C_{D_{\rm airbrakes}}A_0)/2$) as from the feedforward, which simplifies the functional to a simple function, of the form $I(v_0,A_0)$. Integration gives
+\begin{align}
+	I(v_0,A_0) &= \frac{m(\dot x^2(\alpha_0+c) - gm\ln(\dot x^2(\alpha_0+c)+gam)}{2(\alpha_0+c)}\biggr|_{v_0}^0 \\
+	&= \frac m2\cdot gm\frac{-\ln (gm)}{\alpha_0 + c} - \frac m2\left(v_0^2 - gm\frac{\ln(v_0^2(\alpha_0+c)+gm)}{\alpha_0+c}\right)
+\end{align}
+The energy balance becomes
+\begin{align}
+	h_f = h_0 + \frac 12\frac{v_0^2}{g} + \frac{I(v_0,A)\vert_{v_0}^0}{mg}
+\end{align}
+Upon simplification, we obtain
+\begin{align}
+	\boxed{h_f(h_0,v_0,\alpha_0) = h_0 + \frac{m}{2(\alpha_0+c)}\ln\left(v_0^2\cdot \frac{\alpha_0+c}{gm}+1\right)}
+\end{align}
+The predicted height without airbrakes is given by this expression for $\alpha_0=0$. Note that we have again ignored the ramp phase, as this complicates the expression unnecessarily, as with the feedforward calculation.
+
+We have unfortunately found that this method is not very accurate with the OpenRocket-calculated $C_{D_{\rm rocket}}$; as such, we have decided to introduce a ``fudge factor'' for the $C_D$ of the rocket, of the form
+\begin{align}
+{\tt rocketCd}~ \longrightarrow ~{\tt rocketCd * cFudge}
+\end{align}
+where
+\begin{align}
+	{\tt cFudge} = 8.99999871\times 10^{-6} \cdot h_{\rm target}^2 - 1.10354984\times 10^{-1}\cdot h_{\rm target} + 3.38925325\times 10^2
+\end{align}
+if $h_{\rm target}$ is expressed in meters. These coefficients were obtained from fitting a quadratic to tuned fudging coefficients over several target altitudes. This fudge factor appears to account for lack of taking turbulences, linear drag terms, and non-vertical motion into account. This fudge factor is calculated as soon as the target altitude $h_{\rm target}$ is decided upon.
+
+We now wish to control the error $e\equiv h_{\rm target}-h_f$ to aim for zero. We propose the following block diagram:
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{etc/airbrakes/controlBlockDiag.pdf}	
+\caption{Block Diagram for the proposed Airbrakes CL controller.}
+\end{figure}
+
+\noindent We first must find the system dynamics transfer function $G_p$. 
+
+\noindent We linearize about the point $\alpha^*\leftrightarrow A^*$, the output of the feedforward algorithm in the previous section.
+\begin{align}
+	h_{\rm target} \approx h_f(\alpha^*) &= h_0 + \frac{m}{2(\alpha^*+c)}\ln\left(v_0^2\cdot \frac{\alpha^*+c}{gm}+1\right) \\[1em]
+	\frac{\partial h_f}{\partial \alpha}\biggr|_{a^*} &= \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\\[1em]
+	\Rightarrow h_f(\alpha) &\approx h_f(\alpha^*) + (\alpha-\alpha*)\frac{\partial h_f}{\partial \alpha}\biggr|_{a^*}
+\end{align} 
+Let $\Delta A \equiv A-A^*$, and let $\Delta h_f = h_f-h_{\rm target}$. The transfer function is thus
+\begin{align}
+	\boxed{\frac{\Delta h_f}{\Delta A} = \frac{\partial h_f}{\partial A}\biggr|_{a^*} = \frac{\partial h_f}{\partial \alpha}\biggr|_{a^*}\frac{\partial \alpha}{\partial A} = \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\frac{\rho C_D}{2}}
+\end{align}
+We calculate $\alpha^*$ from the feedforward $A^*$ in the previous section. 
+
+We now propose the control scheme. An integrator is useful in removing steady state error, accumulated from a malperforming physical system. Let $K$ be
+\begin{align}
+	K = \frac{\partial h_f}{\partial A}\biggr|_{a^*}
+\end{align}
+Thus,
+\begin{align}
+	\Delta h_f = K\Delta A~\Rightarrow~\Delta A = \frac{\Delta h_f}{K}
+\end{align}
+For a PI controller, we add one pole, such that
+\begin{align}
+	\Delta A = K_pe + K_i\int\limits_0^te~dt~\Rightarrow~0\approx \Delta h_f = K\left(K_pe + K_i\int\limits_0^te~dt\right)
+\end{align}
+We take the derivative:
+\begin{align}
+	0 = KK_p\dot e + KK_ie = KK_p\partial_t \Delta h_f +KK_i\Delta h_f~\Rightarrow~\partial_t\Delta h_f  = -\frac{KK_i}{1+KK_p}\Delta h_f
+\end{align}
+In frequency space, we have
+\begin{align}
+	s = -\frac{KK_i}{1+KK_p}
+\end{align}
+In time, we have a time constant of $\tau$ if the pole location is at $s=-1/\tau$. Thus, 
+\begin{align}
+	\frac{KK_i}{1+KK_p} = \frac 1\tau
+\end{align}
+Let $\beta = KK_p$. Thus,
+\begin{align}
+	K_p = \frac \beta K
+\end{align}
+As a function of $\tau$, the integrator gain $K_i$ is
+\begin{align}
+	K_i = \frac{1+\beta}{K\tau}
+\end{align}
+We have tuned these gains (starting from $\tau=\beta=1$) to
+\begin{align}
+	\boxed{K_p = \frac{2.5}{K}}\quad\quad;\quad\quad \boxed{K_i = \frac{1}{K}}
+\end{align}
+which corresponds to $\beta=2.5$ and $\tau = 3.5\rm~s$, exactly an overdamped behavior we desire (since it is very difficult (in fact more and more difficult over time) to recover an altitude loss). These were tuned with OpenRocket RK6 simulation, over several ``airbrakes malfunction factors'' which related commanded exposed area to actual (simulated) exposed area.
+
+
+In continuous time, the control step is
+\begin{align}
+	A(t) = A^* + K_p(h_f(t)-h_{\rm target}) + K_i\int\limits_0^t (h_f(t)-h_{\rm target})~dt
+\end{align}
+The flight computer runs in discrete time, of course. In order to prevent windup, we implement this as
+\begin{align}
+	\boxed{A[k] = A^* + K_p(h_f[k]-h_{\rm target}) + K_i\left\{\begin{array}{ll}
+I[k] & {\rm if~}	A[k]\geq 1{\rm~and~}\Delta h_f[k]>0 \\[.5em]
+I[k]  & {\rm if~}A[k]\leq 0{\rm~and~}\Delta h_f[k]<0\\[.5em]
+ I[k] + K_i(h_f[k]-h_{\rm target}) & \rm otherwise
+\end{array}
+\right.}
+\end{align}
+This control portion is only applied in the ``plateau'' phase (see below), after the feedforward estimate is completed.
+\subsection{Onboard Algorithm}
 \noindent We have implemented the Airbrakes Control Algorithm using a state machine with the following states (encoded in {\tt AirbrakesControllerState}):
 \begin{multicols}{4}
 \begin{itemize}\tt
@@ -223,13 +355,16 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 \noindent Flow from one state to the next is governed according to the following diagram:
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\textwidth]{etc/airbrakes/statemachine.pdf}	
+\includegraphics[width=0.8\textwidth]{etc/airbrakes/statemachine2.pdf}	
 \caption{Airbrakes Controlled State Flow.}
 \end{figure}
 \noindent We detail the exact procedure.
 \begin{itemize}
 	\item {\color[HTML]{3C78D8}\underline{\tt  DISABLED}}\\[.5em]
-	The Airbrakes controller starts in this state. No action is taken until the method {\tt shouldStartAirbrakesControlPrep()} returns {\tt true}. \\
+	The Airbrakes controller starts in this state. No action is taken until the method {\tt shouldStartAirbrakesControlPrep()} returns {\tt true}, namely
+	\begin{lstlisting}[language=c++]
+	return (getFlightTime() > EARLIEST_AIRBRAKES_PREP_TIME) && 
+		   (!apogeeReached) && (currentRocketVel < START_AIRBRAKES_PREP_VEL)\end{lstlisting}
 	\item {\color[HTML]{A64D79} \underline{\tt PREP}}\\[.5em]
 	The {\tt PREP} stage consists of sampling velocity $\dot x(t)$ and acceleration $\ddot x(t)$ a total of $\tt nMeasurements$ times, with timestamps saved as well. Should the \verb|START_AIRBRAKES_PREPROC_TIME| marker have arrived prior to the full sample acquisition, the controller moves on to the {\tt PREPROCESS} state. \\
 	\item {\color[HTML]{134F5C} \underline{\tt PREPROCESS}}\\[.5em]
@@ -273,7 +408,11 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 	\begin{align}
 		x_{\rm desired} = \left\lfloor \frac{x_0}{n}\right\rfloor n
 	\end{align}
-	where $n$ is some integer detailing the up-to-the-closest quantity to round to. The airbrakes start time is 
+	where $n$ is some integer detailing the up-to-the-closest quantity to round to, or by a hardcoded value in the flight computer code. As of {\tt \color r FEB 17, 2026}, the target altitude is:
+	\begin{align}
+\nonumber		\color r\boxed{6275\rm~m}
+	\end{align}
+	The airbrakes start time is 
 	\begin{align}
 		\tt airbrakesCtrlStartTime = currentTime + AIRBRAKES\underline{~}TIME\underline{~}DELAY
 	\end{align}
@@ -281,8 +420,10 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 	\begin{align}
 		A_0 = {\tt reqDeployedAreaAirbrakes(currentTime+AIRBRAKES\underline{~}TIME\underline{~}DELAY,}~\Delta x)
 	\end{align}
-	Should $A_0 > 1$, the state progresses to {\color[HTML]{AB0000} \underline{\tt INFEASIBLE}}. Otherwise, the required $A_0$ is stored, and the state progresses to {\color[HTML]{38761D} \underline{\tt WAIT\underline{~}FOR\underline{~}START}}.
-	 \\
+	Should $A_0 > 1$, the state progresses to {\color[HTML]{AB0000} \underline{\tt INFEASIBLE}}. Otherwise, the required $A_0$ is stored, and the state progresses to {\color[HTML]{38761D} \underline{\tt WAIT\underline{~}FOR\underline{~}START}}. The fudge factor {\tt cFudge} is now calculated according to
+	\begin{align}
+			{\tt cFudge} = 8.99999871\times 10^{-6} \cdot h_{\rm target}^2 - 1.10354984\times 10^{-1}\cdot h_{\rm target} + 3.38925325\times 10^2
+	\end{align}
 	\item {\color[HTML]{38761D} \underline{\tt WAIT\underline{~}FOR\underline{~}START}}\\[.5em]
 	Simply wait for the flight time to be past {\tt airbrakesCtrlStartTime}. The state progresses to {\color[HTML]{CD6666} \underline{\tt CONTROLLING\underline{~}RAMP}}.\\
 	\item {\color[HTML]{CD6666} \underline{\tt CONTROLLING\underline{~}RAMP}}\\[.5em]
@@ -290,33 +431,72 @@ where $f$ is the aforementioned ``fudge factor,'' whose value is generally close
 	\begin{align}
 		A(t) = 2A_0(t-{\tt airbrakesCtrlStartTime})
 	\end{align}
-	The state ends after 0.5 seconds, progressing to {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEUAU}}.\\
+	The state ends after 0.5 seconds, progressing to {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEAU}}.\\
 	\item {\color[HTML]{96094F} \underline{\tt CONTROLLING\underline{~}PLATEAU}}\\[.5em]
-	The airbrakes area $A(t)$ here is given by
-	\begin{align}
-		A(t) = A_0
-	\end{align}
-	The state ends at apogee, progressing to {\color[HTML]{08357E} \underline{\tt DONE}}.\\
+	The airbrakes area $A(t)$ here is controlled using the algorithm detailed in the previous section. Concretely:
+	\begin{enumerate}
+		\item The airbrakes current area $A[k]$ is obtained, stored as {\tt lastA} (units are $\rm m^2$).
+		\item The $\Delta A$ is computed as $A^*-A[k] = A_0-A[k]$, stored as {\tt lastDeltaA}.
+		\item The projected altitude $h_f[k]$ is computed from the current altitude and velocity, obtained from onboard sensors. If the patching altitude has not yet been set, it is calculated and applied (this occurs once, at the first iteration in this state).
+		\item The $\Delta h_f$ is computed as $h_f[k]-h_{\rm target}$, stored as {\tt lastDeltaH}. 
+		\item The integral term is calculated:
+		\begin{lstlisting}[language=c++]
+float IofKplus1 = 0.0f;
+if (((lastA >= 1.0f) && (lastDeltaH >= 0.0f)) || (lastA <= 1e-5f) && (lastDeltaH < 0.0f)) {
+  IofKplus1 = lastI;
+} else {
+  IofKplus1 = lastI + 2.0f / K * lastDeltaH;
+}
+lastI = IofKplus1;\end{lstlisting}
+		\item The next airbrakes area adjustment $\Delta A[k+1]$ is calculated as
+		\begin{align}
+			\Delta A[k+1] = K_p * {\tt lastDeltaH} + K_i * {\tt lastI}
+		\end{align}
+		and thus
+		\begin{align}
+			A[k+1] = \Delta A[k+1] + A^*
+		\end{align}
+		\item The airbrakes are set to the corresponding fraction:
+		\begin{lstlisting}[language=c++]
+setAirbrakesServo(nextA / a_max); // a_max = 0.0066 m^2\end{lstlisting}
+		\item Should apogee have been detected, the state progresses to {\color[HTML]{08357E} \underline{\tt DONE}}.\\
+	\end{enumerate}
+	
+	
+	
+	
 	\item {\color[HTML]{08357E} \underline{\tt DONE}}\\[.5em]
 	Nothing occurs in this state.\\
 	\item {\color[HTML]{AB0000} \underline{\tt INFEASIBLE}}\\[.5em]
 	Nothing occurs in this state.\\
 \end{itemize}
-\subsubsection{Values of Constants $\color r\tt\langle LAST~UPDATED~JAN~20\rangle$}
+The code that executes this state machine can be found at
+\begin{center}
+	\small \color b \url{https://github.com/MIT-Rocket-Team/RT_Arduino/blob/main/Zephyrus/airbrakes/airbrakes/airbrakes.ino}
+\end{center}
+\newpage
+\subsubsection{Values of Constants $\color r\tt\langle LAST~UPDATED~FEB~17\rangle$}
+\begin{multicols}{2}
 \begin{lstlisting}[language=java]
-double EARLIEST_START_AIRBRAKES_PREP_TIME = 4.0;
-double START_AIRBRAKES_PREP_VEL           = 400.0;
-double START_AIRBRAKES_PREPROC_TIME       = 12.0;
-double AIRBRAKES_TIME_DELAY               = 1.0;
-int    AIRBRAKES_N_MEASUREMENTS           = 13;
-int    AIRBRAKES_MEASUREMENT_FREQ_HZ      = 5;
-int    AIRBRAKES_SIMULATION_T_APOG        = 34;
-double AIRBRAKES_T_APOG_FUDGEDIFF         = 1.5;
-double fudge_factor                       = 3.2;
-double fudge_factor_2                     = 3.5;
-int    roundToHowMuch                     = 1000;
-double AIRBRAKES_MAX_AREA                 = 0.0066;
+double EARLIEST_AIRBRAKES_PREP_TIME  = 4.0;
+double START_AIRBRAKES_PREP_VEL      = 400.0;
+double START_AIRBRAKES_PREPROC_TIME  = 12.0;
+double AIRBRAKES_TIME_DELAY          = 1.0;
+int    AIRBRAKES_N_MEASUREMENTS      = 13;
+int    AIRBRAKES_MEASUREMENT_FREQ_HZ = 5;
+int    AIRBRAKES_SIMULATION_T_APOG   = 33;
+double AIRBRAKES_T_APOG_FUDGEDIFF    = 1.5;
+double fudge_factor                  = 4.22;
+double fudge_factor_2                = 4.7;
+double factorK                       = 0.5;
+double kp_factor                     = 2.5;
+double ki_factor                     = 0.5;
+int    roundToHowMuch                = 500;
+double AIRBRAKES_MAX_AREA            = 0.0066;
 \end{lstlisting}
+\end{multicols}
+
+
 
 
 
@@ -333,6 +513,12 @@ double AIRBRAKES_MAX_AREA                 = 0.0066;
     * MASTER PHYSICAL SWITCH: enable/disable set_state_from_SD_card on the rocket
     * GROUND STATION SWITCH: if enabled, allows for <something>
 \end{verbatim}
+
+
+
+\newpage\section{Full FC Code Printout}
+\subsection*{Airbrakes Controller}
+\lstinputlisting[language=c++]{/Users/mdn/Developer/MIT_Rkt_Team/Avionics2025/RT_Arduino/Zephyrus/airbrakes/airbrakes/airbrakes.ino}
 \end{document}
 
 
