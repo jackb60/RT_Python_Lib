@@ -68,20 +68,21 @@
 \section*{Instructions}
 {\tt 
 This manual is for use on Project Zephyrus flights, to be printed for launch in a minimum of $\boxed{\texttt{2}}$ copies, one for the Telemetry Lead, and another for the Telemetry Deputy. It is to be read prior to launch by all members involved in the Ground Station, Away Station, and Avionics/Structures Lead roles. At each of the Away Station(s) and Ground Station, $\boxed{\tt 2}$ copies must be printed and be available for the site lead and deputy to access prior to, during, and after flight. The personnel whose mastery of this document's contents is listed below:
+\vfill
 \begin{multicols}{3}
 	\begin{itemize}
-	\item \color r {\bf Team Lead}\\(Sections 1-9)\color k
-	\item \color r {\bf Avionics Lead}\\(Sections 1-9)\color k
+	\item \color r {\bf Team Lead}\\(Sections 1-9)\color k\\[1.5em]
+	\item \color r {\bf Avionics Lead}\\(Sections 1-9)\color k\\[1.5em]
 	\item \color r{\bf Structures Lead} \\(Sections 1, 4-6)\color k
-	\item \color b{\bf Ground Station Lead}\\ (Sections 1-2, 4-6, 8)\color k
-	\item \color g {\bf Ground Station Deputy} \\(Sections 1-2, 4-6)\color k
+	\item \color b{\bf Ground Station Lead}\\ (Sections 1-2, 4-6, 8)\color k\\[1.5em]
+	\item \color g {\bf Ground Station Deputy} \\(Sections 1-2, 4-6)\color k\\[1.5em]
 	\item \color b{\bf Simulation Lead} \\(Sections 1-11)\color k
-	\item \color b{\bf Away Station Lead}\\ (Sections 3-6, 9)\color k
-	\item \color g{\bf Away Station Deputy}\\ (Sections 3-6, 9)\color k
+	\item \color b{\bf Away Station Lead}\\ (Sections 3-6, 9)\color k\\[1.5em]
+	\item \color g{\bf Away Station Deputy}\\ (Sections 3-6, 9)\color k\\[1.5em]
 	\item \color r {\bf Integration Lead}\\(Sections 1-9)\color k
 \end{itemize}
 \end{multicols}
-\hfill
+\vfill
 \begin{multicols}{2}
 \tableofcontents
 \end{multicols}
@@ -276,18 +277,18 @@ We now wish to control the error $e\equiv h_{\rm target}-h_f$ to aim for zero. W
 \noindent We linearize about the point $\alpha^*\leftrightarrow A^*$, the output of the feedforward algorithm in the previous section.
 \begin{align}
 	h_{\rm target} \approx h_f(\alpha^*) &= h_0 + \frac{m}{2(\alpha^*+c)}\ln\left(v_0^2\cdot \frac{\alpha^*+c}{gm}+1\right) \\[1em]
-	\frac{\partial h_f}{\partial \alpha}\biggr|_{a^*} &= \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\\[1em]
-	\Rightarrow h_f(\alpha) &\approx h_f(\alpha^*) + (\alpha-\alpha*)\frac{\partial h_f}{\partial \alpha}\biggr|_{a^*}
+	\frac{\partial h_f}{\partial \alpha}\biggr|_{\alpha^*} &= \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\\[1em]
+	\Rightarrow h_f(\alpha) &\approx h_f(\alpha^*) + (\alpha-\alpha*)\frac{\partial h_f}{\partial \alpha}\biggr|_{\alpha^*}
 \end{align} 
 Let $\Delta A \equiv A-A^*$, and let $\Delta h_f = h_f-h_{\rm target}$. The transfer function is thus
 \begin{align}
-	\boxed{\frac{\Delta h_f}{\Delta A} = \frac{\partial h_f}{\partial A}\biggr|_{a^*} = \frac{\partial h_f}{\partial \alpha}\biggr|_{a^*}\frac{\partial \alpha}{\partial A} = \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\frac{\rho C_D}{2}}
+	\boxed{\frac{\Delta h_f}{\Delta A} = \frac{\partial h_f}{\partial A}\biggr|_{\alpha^*} = \frac{\partial h_f}{\partial \alpha}\biggr|_{\alpha^*}\frac{\partial \alpha}{\partial A} = \frac m2\left(-\frac{\displaystyle\ln\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}{(c+\alpha^*)^2} + \frac{v_0^2}{gm(c+\alpha^*)\left(\frac{v_0^2}{gm}(c+\alpha^*)+1\right)}\right)\frac{\rho C_D}{2}}
 \end{align}
 We calculate $\alpha^*$ from the feedforward $A^*$ in the previous section. 
 
 We now propose the control scheme. An integrator is useful in removing steady state error, accumulated from a malperforming physical system. Let $K$ be
 \begin{align}
-	K = \frac{\partial h_f}{\partial A}\biggr|_{a^*}
+	K = \frac{\partial h_f}{\partial A}\biggr|_{\alpha^*}
 \end{align}
 Thus,
 \begin{align}
@@ -333,7 +334,7 @@ The flight computer runs in discrete time, of course. In order to prevent windup
 	\boxed{A[k] = A^* + K_p(h_f[k]-h_{\rm target}) + K_i\left\{\begin{array}{ll}
 I[k] & {\rm if~}	A[k]\geq 1{\rm~and~}\Delta h_f[k]>0 \\[.5em]
 I[k]  & {\rm if~}A[k]\leq 0{\rm~and~}\Delta h_f[k]<0\\[.5em]
- I[k] + K_i(h_f[k]-h_{\rm target}) & \rm otherwise
+ I[k] + (h_f[k]-h_{\rm target}) & \rm otherwise
 \end{array}
 \right.}
 \end{align}
