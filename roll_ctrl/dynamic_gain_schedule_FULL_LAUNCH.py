@@ -16,6 +16,9 @@
 
 import math
 
+FT_TO_M = 0.3048
+FTPS_TO_MPS = 0.3048
+
 # Vehicle parameters updated 5 FEB 2026
 Jxx0 = 0.27 # kg * m^2 (Roll MOI initial)
 Jxxf = 0.2  # kg * m^2 (Roll MOI final)
@@ -77,8 +80,8 @@ def atmosphere(h_m):
 
 
 # CL_alpha (Lift coefficient slope: stepwise lookup table vs Mach)
-M_EDGES = (0.0, 0.8, 1.2, 2.0, 3.2)  # PLACEHOLDERS UNTIL CFD COMPLETE
-CL_STEPS = (4.5, 4.0, 3.2, 2.6, 2.0) # PLACEHOLDERS UNTIL CFD COMPLETE
+M_EDGES = (0.0, 0.8, 1.2, 2.0, 2.5, 3.4)  # PLACEHOLDERS UNTIL CFD COMPLETE
+CL_STEPS = (4.5, 4.0, 3.2, 2.6, 2.3, 2.0) # PLACEHOLDERS UNTIL CFD COMPLETE
 
 def cl_alpha(mach):
     idx = 0
@@ -105,8 +108,8 @@ def Gd(rho, v, cl_a, Jxx):
 
 
 def Gd_star(Jxx0, Jxxf, t_b):
-    M_star = 3.2
-    h_star = 5000.0  # meters (AGL in your convention; atmosphere adds LAUNCH_ALT)
+    M_star = 3.280581
+    h_star = 16253.6 * FT_TO_M  # meters (AGL; atmosphere adds LAUNCH_ALT)
 
     T, rho, a = atmosphere(h_star)
     v_star = M_star * a
@@ -147,7 +150,7 @@ if __name__ == "__main__":
     # Each FC loop need to have these state variables:
     t = 7.5       # s (time)
     h = 12000.0   # m (altitude AGL)
-    v = 5.0       # m/s (example small; will be floored)
+    v = 5.0       # m/s (speed)
 
     v_eff = v if v >= V_MIN else V_MIN
     T, rho, a = atmosphere(h)
