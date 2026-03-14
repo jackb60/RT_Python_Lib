@@ -205,7 +205,7 @@ class RocketUI(QWidget):
         left_layout.addWidget(servo_group)
 
         # --- Pointer Control ---
-        pointer_group = QGroupBox("Pointer Control")
+        self.pointer_group = QGroupBox("Pointer Control")
         grid = QGridLayout()
 
         self.btn_up = QPushButton("↑")
@@ -231,8 +231,8 @@ class RocketUI(QWidget):
         self.track_toggle.stateChanged.connect(self.toggle_tracking)
         grid.addWidget(self.track_toggle, 3, 0, 1, 3)
 
-        pointer_group.setLayout(grid)
-        left_layout.addWidget(pointer_group)
+        self.pointer_group.setLayout(grid)
+        left_layout.addWidget(self.pointer_group)
 
         # --- Poll / Log controls ---
         pl_row = QHBoxLayout()
@@ -642,6 +642,7 @@ class RocketUI(QWidget):
         self.disconnect_btn.setEnabled(connected)
         self.connect_btn_antenna.setEnabled(not connected_antenna)
         self.disconnect_btn_antenna.setEnabled(connected_antenna)
+        self.pointer_group.setEnabled(connected_antenna)
         self.poll_btn.setEnabled(connected)
         self.log_btn.setEnabled(connected)
         self.zero_roll_btn.setEnabled(connected)
