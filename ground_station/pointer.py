@@ -17,9 +17,62 @@ class pointer:
     def __init__(self, port=HARDWARE_PORT, baud=115200):
         self.port = port
         self.baud = baud
-        self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
+        try:
+            self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
+            self.isConnected = True
+        except:
+            self.ser = None
+            self.isConnected = False
         self.gps_lat = gps_lat
         self.gps_long = gps_long
+        self.debug = True # global
+        self.disconnect()
+
+    def connect(self,port=None,baud=115200):
+        if self.debug:
+            print("[PTR] Starting connection to {} at rate {}".format(self.port,self.baud))
+        if self.isConnected:
+            print("[PTR] Already connected to {} at rate {}".format(self.port,self.baud))
+            return True, None
+
+        if port is not None:
+            self.port = port
+        try:
+            self.baud = baud
+            self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
+            self.isConnected = True
+            print("[PTR] Successful connection to {} at rate {}".format(self.port,self.baud))
+            return True, None
+
+        except Exception as e:
+            print("[PTR] Failed to connect to {} at rate {}".format(self.port,self.baud))
+            if self.debug:
+                print(e)
+            self.isConnected = False
+            return False, e
+
+
+
+    def disconnect(self):
+        if self.debug:
+            print("[PTR] Starting disconnection from {} at rate {}".format(self.port,self.baud))
+        if not self.isConnected:
+            print("[PTR] Already disconnected.")
+            if self.debug:
+                print("[PTR] Last port was {} at rate {}".format(self.port,self.baud))
+            return True, None
+        else:
+            e = None
+            try:
+                self.ser.close()
+            except Exception as e:
+                print("[PTR] Failed to close serial. Noncritical.")
+            self.ser = None
+            self.isConnected = False
+            print("[PTR] Successful disconnection to {} at rate {}".format(self.port,self.baud))
+            return True, e
+
+
 
     def calc_angles(self, rocket_fix, rocket_lat, rocket_long, rocket_alt):
         try:
@@ -36,16 +89,22 @@ class pointer:
 
     
     def send_angles(self, azimuth, elevation):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x00
-        struct.pack_into('<f', data, 2, azimuth)
-        struct.pack_into('<f', data, 6, elevation)
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
-        if self.ser.in_waiting:
-            response = self.ser.read(self.ser.in_waiting)
-            print(response)
+        if isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x00
+            struct.pack_into('<f', data, 2, azimuth)
+            struct.pack_into('<f', data, 6, elevation)
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            if self.ser.in_waiting:
+                response = self.ser.read(self.ser.in_waiting)
+                print(response)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
+
 
     def calc_checksum(self, data):
         chksum = 0
@@ -56,36 +115,69 @@ class pointer:
         return chksum
     
     def up(self):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x01
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
+        if self.isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x01
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
+
 
     def down(self):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x02
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
+        if self.isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x02
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
 
     def left(self):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x03
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
+        if self.isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x03
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
 
     def right(self):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x04
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
+        if self.isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x04
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
 
     def zero(self):
-        data = bytearray(11)
-        data[0] = 0xAA
-        data[1] = 0x05
-        data[10] = self.calc_checksum(data)
-        self.ser.write(data)
+        if self.isConnected:
+            data = bytearray(11)
+            data[0] = 0xAA
+            data[1] = 0x05
+            data[10] = self.calc_checksum(data)
+            self.ser.write(data)
+            return True
+        else:
+            print("[PTR] Command failed: disconnected.")
+            return False
+
+
+
+
+
+
+

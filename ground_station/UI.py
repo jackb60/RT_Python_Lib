@@ -33,7 +33,7 @@ POLL_MS = 1
 class RocketUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Dangerous Rocket Telemetry UI")
+        self.setWindowTitle("(Very) Dangerous Rocket Telemetry UI")
         self.rocket = rocket()   # Do not open serial here
         self.pointer = pointer()
         self.tracking_enabled = False
@@ -49,7 +49,7 @@ class RocketUI(QWidget):
     def _build_ui(self):
         # --- Top: serial port selection ---
         self.top_row = QHBoxLayout()
-        self.top_row.addWidget(QLabel("Serial Port:"))
+        self.top_row.addWidget(QLabel("Gnd. St. Hw. Port:"))
 
         self.port_combo = QComboBox()
         self.top_row.addWidget(self.port_combo)
@@ -66,12 +66,32 @@ class RocketUI(QWidget):
         self.disconnect_btn.clicked.connect(self.disconnect_serial)
         self.top_row.addWidget(self.disconnect_btn)
 
+
+        self.top_row_antenna = QHBoxLayout()
+        self.top_row_antenna.addWidget(QLabel("Antenna Ptr. Port:"))
+
+        self.port_combo_antenna = QComboBox()
+        self.top_row_antenna.addWidget(self.port_combo_antenna)
+
+        self.refresh_ports_btn_antenna = QPushButton("Refresh")
+        self.refresh_ports_btn_antenna.clicked.connect(self.refresh_ports)
+        self.top_row_antenna.addWidget(self.refresh_ports_btn_antenna)
+
+        self.connect_btn_antenna = QPushButton("Connect")
+        self.connect_btn_antenna.clicked.connect(self.connect_serial_antenna)
+        self.top_row_antenna.addWidget(self.connect_btn_antenna)
+
+        self.disconnect_btn_antenna = QPushButton("Disconnect")
+        self.disconnect_btn_antenna.clicked.connect(self.disconnect_serial_antenna)
+        self.top_row_antenna.addWidget(self.disconnect_btn_antenna)
+
         # --- Main horizontal layout ---
         main_layout = QHBoxLayout()
 
         # --- Left: telemetry + safe commands ---
         left_layout = QVBoxLayout()
         left_layout.addLayout(self.top_row)
+        left_layout.addLayout(self.top_row_antenna)
 
         # Top telemetry table
         self.telemetry_table = QTableWidget(0, 2)
@@ -256,6 +276,14 @@ class RocketUI(QWidget):
             for p in ports:
                 self.port_combo.addItem(p.device)
 
+        self.port_combo_antenna.clear()
+        ports = list(serial.tools.list_ports.comports())
+        if not ports:
+            self.port_combo_antenna.addItem("No ports")
+        else:
+            for p in ports:
+                self.port_combo_antenna.addItem(p.device)
+
     def connect_serial(self):
         port = self.port_combo.currentText()
         if not port or port == "No ports":
@@ -288,6 +316,42 @@ class RocketUI(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Disconnect Error", str(e))
         self.update_ui_state()
+
+
+
+    def connect_serial_antenna(self):
+        port = self.port_combo.currentText()
+        if not port or port == "No ports":
+            QMessageBox.warning(self, "No Port", "No serial port selected.")
+            return
+        try:
+            ok, err  = self.pointer.connect(port)
+        except Exception as e:
+            ok, err = False, str(e)
+        if ok:
+            self.status_label.setText(f"Connected to {port}")
+            QMessageBox.information(self, "Connected", f"Connected to {port} (115200 baud)")
+        else:
+            self.status_label.setText("Connection failed")
+            QMessageBox.critical(self, "Connect Failed", f"Could not open {port}:\n{err}")
+        self.update_ui_state()
+
+    def disconnect_serial_antenna(self):
+        try:
+            if hasattr(self.pointer, "disconnect"):
+                self.pointer.disconnect()
+            else:
+                if getattr(self.pointer, "ser", None) is not None:
+                    try:
+                        self.pointer.ser.close()
+                    except Exception:
+                        pass
+                    self.pointer.ser = None
+            self.status_label.setText("Disconnected")
+        except Exception as e:
+            QMessageBox.warning(self, "Disconnect Error", str(e))
+        self.update_ui_state()
+
 
     # -------------------------
     # Polling / Logging
@@ -571,8 +635,13 @@ class RocketUI(QWidget):
     # -------------------------
     def update_ui_state(self):
         connected = getattr(self.rocket, "ser", None) is not None
+        connected_antenna = getattr(self.pointer, "isConnected", False)
+        print("Antenna Ptr Status:")
+        print(connected_antenna)
         self.connect_btn.setEnabled(not connected)
         self.disconnect_btn.setEnabled(connected)
+        self.connect_btn_antenna.setEnabled(not connected_antenna)
+        self.disconnect_btn_antenna.setEnabled(connected_antenna)
         self.poll_btn.setEnabled(connected)
         self.log_btn.setEnabled(connected)
         self.zero_roll_btn.setEnabled(connected)
