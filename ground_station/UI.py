@@ -33,7 +33,7 @@ POLL_MS = 1
 class RocketUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Safe Rocket Telemetry UI")
+        self.setWindowTitle("Dangerous Rocket Telemetry UI")
         self.rocket = rocket()   # Do not open serial here
         self.pointer = pointer()
         self.tracking_enabled = False
@@ -106,21 +106,64 @@ class RocketUI(QWidget):
 
         main_layout.addLayout(left_layout, stretch=2)
 
-        # --- Right: Pyros + Servos table ---
-        pyro_group = QGroupBox("Pyros & Servos Status (READ-ONLY)")
+            # --- Right side panel ---
+        right_layout = QVBoxLayout()
+
+        # --------------------
+        # Pyro table
+        # --------------------
+        pyro_group = QGroupBox("Pyros")
+
         p_layout = QVBoxLayout()
-        self.pyro_table = QTableWidget(0, 3)  # start empty
-        self.pyro_table.setHorizontalHeaderLabels(["#", "Status", "A/F"])
+
+        self.pyro_table = QTableWidget(0, 4)
+        self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F"])
         self.pyro_table.verticalHeader().setVisible(False)
         self.pyro_table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        # make select + # columns small
+        self.pyro_table.setColumnWidth(0, 35)
+        self.pyro_table.setColumnWidth(1, 40)
+
         p_layout.addWidget(self.pyro_table)
-        warn = QLabel("<b style='color:red'>WARNING:</b> Remote arming/firing controls are intentionally disabled.")
-        warn.setWordWrap(True)
-        p_layout.addWidget(warn)
+
+        btn_layout = QHBoxLayout()
+
+        self.pyro_arm_btn = QPushButton("ARM")
+        self.pyro_arm_btn.clicked.connect(self.pyro_arm)
+        btn_layout.addWidget(self.pyro_arm_btn)
+
+        self.pyro_fire_btn = QPushButton("💥FIRE💥")
+        self.pyro_fire_btn.clicked.connect(self.pyro_fire)
+        btn_layout.addWidget(self.pyro_fire_btn)
+
+        p_layout.addLayout(btn_layout)
+
         pyro_group.setLayout(p_layout)
 
-        main_layout.addWidget(pyro_group, stretch=1)
+        right_layout.addWidget(pyro_group)
 
+
+        # --------------------
+        # Servo table
+        # --------------------
+        servo_group = QGroupBox("Servos")
+
+        servo_layout = QVBoxLayout()
+
+        self.servo_table = QTableWidget(0, 2)
+        self.servo_table.setHorizontalHeaderLabels(["Servo", "Angle"])
+        self.servo_table.verticalHeader().setVisible(False)
+        self.servo_table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        servo_layout.addWidget(self.servo_table)
+
+        servo_group.setLayout(servo_layout)
+
+        right_layout.addWidget(servo_group)
+
+        # add the whole right panel
+        main_layout.addLayout(right_layout, stretch=1)
         # --- Bottom: status label ---
         final_layout = QVBoxLayout()
         final_layout.addLayout(main_layout)
@@ -348,35 +391,50 @@ class RocketUI(QWidget):
             self.telemetry_table.setItem(row, 0, QTableWidgetItem(str(k)))
             self.telemetry_table.setItem(row, 1, QTableWidgetItem(display_val))
 
-        # --- Pyros + Servos table ---
+        # --- Pyros table ---
         try:
             pyros = getattr(self.rocket, "pyros", [None]*8)
             armed = getattr(self.rocket, "armed", [0]*8)
             fired = getattr(self.rocket, "fired", [0]*8)
             servos = getattr(self.rocket, "servos", [0]*8)
 
-            display_rows = list(range(1, 7)) + ["Servo 6", "Servo 7"]  # pyros 1-6 + servos 6&7
+            display_rows = list(range(0, 6))
             self.pyro_table.setRowCount(len(display_rows))
             status_map = {0: ("FAIL", Qt.red), 1: ("UNCONNECTED", Qt.gray),
                         2: ("CONNECTED", Qt.darkYellow), 3: ("FIRED", Qt.green)}
 
             for i, idx in enumerate(display_rows):
-                if isinstance(idx, int):  # Pyros
-                    s_text, color = status_map.get(pyros[idx], ("Unknown", Qt.black))
-                    self.pyro_table.setItem(i, 0, QTableWidgetItem(str(idx)))
 
-                    item = QTableWidgetItem(s_text)
-                    item.setBackground(QColor(color))  # color the background
-                    self.pyro_table.setItem(i, 1, item)
-                    self.pyro_table.setItem(i, 2, QTableWidgetItem(f"A:{armed[idx]} F:{fired[idx]}"))
-                else:  # Servos
-                    servo_idx = 6 if idx == "Servo 6" else 7
-                    self.pyro_table.setItem(i, 0, QTableWidgetItem(idx))
-                    self.pyro_table.setItem(i, 1, QTableWidgetItem(str(servos[servo_idx])))
-                    self.pyro_table.setItem(i, 2, QTableWidgetItem(""))
+                # create checkbox only once
+                if self.pyro_table.cellWidget(i, 0) is None:
+                    checkbox = QCheckBox()
+                    self.pyro_table.setCellWidget(i, 0, checkbox)
+
+                # pyro number
+                self.pyro_table.setItem(i, 1, QTableWidgetItem(str(idx)))
+
+                # status lookup
+                s_text, color = status_map.get(pyros[idx], ("Unknown", Qt.black))
+
+                item = QTableWidgetItem(s_text)
+                item.setBackground(QColor(color))
+                self.pyro_table.setItem(i, 2, item)
+
+                # armed / fired
+                self.pyro_table.setItem(i, 3, QTableWidgetItem(f"A:{armed[idx]} F:{fired[idx]}"))
+
 
         except Exception:
             self.pyro_table.setRowCount(0)
+
+        # --- Servo table ---
+        self.servo_table.setRowCount(4)
+
+        for i in range(4):
+            servo_idx = i
+
+            self.servo_table.setItem(i, 0, QTableWidgetItem(str(servo_idx)))
+            self.servo_table.setItem(i, 1, QTableWidgetItem(str(servos[servo_idx])))
 
         self.status_label.setText("Telemetry updated")
         return True
@@ -433,6 +491,71 @@ class RocketUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Command Error", str(e))
 
+    def get_selected_pyros(self):
+        selected = []
+
+        for row in range(self.pyro_table.rowCount()):
+            widget = self.pyro_table.cellWidget(row, 0)
+
+            if isinstance(widget, QCheckBox) and widget.isChecked():
+                idx_item = self.pyro_table.item(row, 1)
+
+                try:
+                    idx = int(idx_item.text())
+                    selected.append(idx)
+                except:
+                    pass
+
+        return selected
+    
+    def pyro_arm(self):
+        pyros = self.get_selected_pyros()
+
+        if not pyros:
+            QMessageBox.warning(self, "No Pyros Selected", "Select at least one pyro")
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirm ARM",
+            f"Send ARM to pyros {pyros}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "arm_pyros"):
+                    self.rocket.arm_pyros(pyros)
+
+                self.status_label.setText(f"ARM sent to {pyros}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+
+    def pyro_fire(self):
+        pyros = self.get_selected_pyros()
+
+        if not pyros:
+            QMessageBox.warning(self, "No Pyros Selected", "Select at least one pyro")
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirm FIRE",
+            f"FIRE pyros {pyros}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "fire_pyros"):
+                    self.rocket.fire_pyros(pyros)
+
+                self.status_label.setText(f"FIRE sent to {pyros}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+
     # -------------------------
     # UI state helpers
     # -------------------------
@@ -449,6 +572,8 @@ class RocketUI(QWidget):
         self.advance_state_btn.setEnabled(connected)
         self.set_servo_btn.setEnabled(connected)
         self.pd_activate_btn.setEnabled(connected)
+        self.pyro_arm_btn.setEnabled(connected)
+        self.pyro_fire_btn.setEnabled(connected)
 
 def main():
     app = QApplication(sys.argv)
