@@ -14,8 +14,12 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QLineEdit,
     QGroupBox,
-    QCheckBox
+    QCheckBox,
+    QHeaderView,
+    QFrame,
 )
+from PyQt5.QtGui import QFont
+
 from PyQt5.QtCore import QTimer, Qt
 
 from PyQt5.QtGui import QColor
@@ -29,11 +33,12 @@ except Exception as e:
     raise ImportError("Could not import `rocket` from rocket.py. Ensure rocket.py is in the same folder.") from e
 
 POLL_MS = 1
+DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
 
 class RocketUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("(Very) Dangerous Rocket Telemetry UI")
+        self.setWindowTitle(DEFAULT_WINDOW_TITLE)
         self.rocket = rocket()   # Do not open serial here
         self.pointer = pointer()
         self.tracking_enabled = False
@@ -49,7 +54,8 @@ class RocketUI(QWidget):
     def _build_ui(self):
         # --- Top: serial port selection ---
         self.top_row = QHBoxLayout()
-        self.top_row.addWidget(QLabel("Gnd. St. Hw. Port:"))
+        self.ground_label = QLabel("Ground Station Comm. Port:")
+        self.top_row.addWidget(self.ground_label)
 
         self.port_combo = QComboBox()
         self.top_row.addWidget(self.port_combo)
@@ -68,7 +74,8 @@ class RocketUI(QWidget):
 
 
         self.top_row_antenna = QHBoxLayout()
-        self.top_row_antenna.addWidget(QLabel("Antenna Ptr. Port:"))
+        self.antenna_label = QLabel("Antenna Pointer Port:")
+        self.top_row_antenna.addWidget(self.antenna_label)
 
         self.port_combo_antenna = QComboBox()
         self.top_row_antenna.addWidget(self.port_combo_antenna)
@@ -93,12 +100,59 @@ class RocketUI(QWidget):
         left_layout.addLayout(self.top_row)
         left_layout.addLayout(self.top_row_antenna)
 
+        # Table headers
+
+        rowLabels = QHBoxLayout()
+        tmp = QLabel("Rocket Dynamics")
+        tmp.setStyleSheet("margin-left:60%; margin-right:40%; font-weight:bold;")
+        rowLabels.addWidget(tmp)
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        rowLabels.addWidget(separator)
+        tmp = QLabel("GPS Info")
+        tmp.setStyleSheet("margin-left:80%; margin-right:40%; font-weight:bold;")
+        rowLabels.addWidget(tmp)
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        rowLabels.addWidget(separator)
+        tmp = QLabel("Power Status")
+        tmp.setStyleSheet("margin-left:70%; margin-right:40%; font-weight:bold;")
+        rowLabels.addWidget(tmp)
+
+        left_layout.addLayout(rowLabels)
+
+
         # Top telemetry table
+        row = QHBoxLayout()
+        
         self.telemetry_table = QTableWidget(0, 2)
         self.telemetry_table.setHorizontalHeaderLabels(["Field", "Value"])
         self.telemetry_table.verticalHeader().setVisible(False)
         self.telemetry_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        left_layout.addWidget(self.telemetry_table)
+        self.telemetry_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        row.addWidget(self.telemetry_table)
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        row.addWidget(separator)
+
+        self.gps_table = QTableWidget(0, 2)
+        self.gps_table.setHorizontalHeaderLabels(["Field", "Value"])
+        self.gps_table.verticalHeader().setVisible(False)
+        self.gps_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.gps_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        row.addWidget(self.gps_table)
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        row.addWidget(separator)
+
+        self.power_table = QTableWidget(0, 2)
+        self.power_table.setHorizontalHeaderLabels(["Field", "Value"])
+        self.power_table.verticalHeader().setVisible(False)
+        self.power_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.power_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        row.addWidget(self.power_table)
+        left_layout.addLayout(row)
+
 
         # Safe command buttons
         safe_group = QGroupBox("Safe Commands")
@@ -144,16 +198,17 @@ class RocketUI(QWidget):
         # make select + # columns small
         self.pyro_table.setColumnWidth(0, 35)
         self.pyro_table.setColumnWidth(1, 40)
+        self.pyro_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         p_layout.addWidget(self.pyro_table)
 
         btn_layout = QHBoxLayout()
 
-        self.pyro_arm_btn = QPushButton("💪ARM💪")
+        self.pyro_arm_btn = QPushButton("💪 ARM 💪")
         self.pyro_arm_btn.clicked.connect(self.pyro_arm)
         btn_layout.addWidget(self.pyro_arm_btn)
 
-        self.pyro_fire_btn = QPushButton("💥FIRE💥")
+        self.pyro_fire_btn = QPushButton("💥 FIRE 💥")
         self.pyro_fire_btn.clicked.connect(self.pyro_fire)
         btn_layout.addWidget(self.pyro_fire_btn)
 
@@ -426,16 +481,25 @@ class RocketUI(QWidget):
             "RSSI": getattr(self.rocket, "rssi", ""),
             "RX RSSI": getattr(self.rocket, "rxrssi", ""),
             "Last Rec (ms)": getattr(self.rocket, "last_rec", ""),
-            "Battery (V)": getattr(self.rocket, "batt_voltage", ""),
+            "Baro Filtered Alt (m)": getattr(self.rocket, "barofilteredalt", ""),
+            "Baro Max Alt (m)": getattr(self.rocket, "baro_max_alt", ""),
+            "Roll (deg)": getattr(self.rocket, "roll_gyro_int", ""),
+            "Accel Integrated Velo (m/s)": getattr(self.rocket, "accel_integrated_velo", ""),
+        }
+
+        GPS_snapshot = {
             "GPS Fix": getattr(self.rocket, "gps_fix", ""),
             "GPS Lat": getattr(self.rocket, "lat", ""),
             "GPS Lon": getattr(self.rocket, "lon", ""),
             "GPS Alt (m)": getattr(self.rocket, "gpsalt", ""),
             "GPS Max Alt (m)": getattr(self.rocket, "gps_max_alt", ""),
-            "Baro Filtered Alt (m)": getattr(self.rocket, "barofilteredalt", ""),
-            "Baro Max Alt (m)": getattr(self.rocket, "baro_max_alt", ""),
-            "Roll (deg)": getattr(self.rocket, "roll_gyro_int", ""),
-            "Accel Integrated Velo (m/s)": getattr(self.rocket, "accel_integrated_velo", ""),
+            "GPS Horiz Prec. (m)": getattr(self.rocket, "gps_horiz_prec", ""),
+            "GPS Vert. Prec. (m)": getattr(self.rocket, "gps_vert_prec", ""),
+            "GPS Satellite No.": getattr(self.rocket, "gps_num_sat", "")
+        }
+
+        power_snapshot = {
+            "Battery (V)": getattr(self.rocket, "batt_voltage", ""),
             "Temp (°C)": getattr(self.rocket, "temp", "")
         }
 
@@ -455,6 +519,34 @@ class RocketUI(QWidget):
             self.telemetry_table.setItem(row, 0, QTableWidgetItem(str(k)))
             self.telemetry_table.setItem(row, 1, QTableWidgetItem(display_val))
 
+        self.gps_table.setRowCount(len(GPS_snapshot))
+        for row, (k, v) in enumerate(GPS_snapshot.items()):
+            if isinstance(v, float):
+                if k in ["GPS Lat", "GPS Lon"]:
+                    display_val = f"{v:.5f}"
+                else:
+                    display_val = f"{v:.3f}"
+            elif isinstance(v, list):
+                display_val = str([round(x,3) if isinstance(x,float) else x for x in v])
+            else:
+                display_val = str(v)
+            self.gps_table.setItem(row, 0, QTableWidgetItem(str(k)))
+            self.gps_table.setItem(row, 1, QTableWidgetItem(display_val))
+
+        self.power_table.setRowCount(len(power_snapshot))
+        for row, (k, v) in enumerate(power_snapshot.items()):
+            if isinstance(v, float):
+                if k in ["GPS Lat", "GPS Lon"]:
+                    display_val = f"{v:.5f}"
+                else:
+                    display_val = f"{v:.3f}"
+            elif isinstance(v, list):
+                display_val = str([round(x,3) if isinstance(x,float) else x for x in v])
+            else:
+                display_val = str(v)
+            self.power_table.setItem(row, 0, QTableWidgetItem(str(k)))
+            self.power_table.setItem(row, 1, QTableWidgetItem(display_val))
+
         # --- Pyros table ---
         try:
             pyros = getattr(self.rocket, "pyros", [None]*8)
@@ -473,6 +565,7 @@ class RocketUI(QWidget):
                 # create checkbox only once
                 if self.pyro_table.cellWidget(i, 0) is None:
                     checkbox = QCheckBox()
+                    checkbox.setStyleSheet("margin-left:50%; margin-right:50%;")
                     self.pyro_table.setCellWidget(i, 0, checkbox)
 
                 # pyro number
@@ -496,6 +589,13 @@ class RocketUI(QWidget):
                     res_text = str(res_val)
 
                 self.pyro_table.setItem(i, 4, QTableWidgetItem(res_text))
+
+
+            for row in range(self.pyro_table.rowCount()):
+                for col in range(self.pyro_table.columnCount()):
+                    item = self.pyro_table.item(row, col)
+                    if item is not None:
+                        item.setTextAlignment(Qt.AlignCenter)
 
 
         except Exception:
@@ -636,8 +736,18 @@ class RocketUI(QWidget):
     def update_ui_state(self):
         connected = getattr(self.rocket, "ser", None) is not None
         connected_antenna = getattr(self.pointer, "isConnected", False)
-        print("Antenna Ptr Status:")
-        print(connected_antenna)
+        self.setWindowTitle(DEFAULT_WINDOW_TITLE + ": GroundStation {}; AntennaPtr {}".format(
+            "ONLINE ✅" if connected else "OFFLINE ❌",
+            "ONLINE ✅" if connected_antenna else "OFFLINE ❌"))
+
+        if connected:
+            self.ground_label.setStyleSheet("font-weight:bold; color:#38761D;")
+        else:
+            self.ground_label.setStyleSheet("font-weight:normal; color:#AB0000;")
+        if connected_antenna:
+            self.antenna_label.setStyleSheet("font-weight:bold; color:#38761D;")
+        else:
+            self.antenna_label.setStyleSheet("font-weight:normal; color:#AB0000;")
         self.connect_btn.setEnabled(not connected)
         self.disconnect_btn.setEnabled(connected)
         self.connect_btn_antenna.setEnabled(not connected_antenna)
@@ -657,6 +767,11 @@ class RocketUI(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    try:
+        app.setFont(QFont("Lucida Grande", 12))
+    except Exception as e:
+        print(e)
+        print("Set font failed :(")
     win = RocketUI()
     win.resize(900, 700)
     win.show()

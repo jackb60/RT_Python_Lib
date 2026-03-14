@@ -39,6 +39,9 @@ class rocket:
         self.pdop = 0
         self.hdop = 0
         self.vdop = 0
+        self.gps_horiz_prec = -1
+        self.gps_vert_prec = -1
+        self.gps_num_sat = 0
         self.flight_time = 0 #msec
         self.last_rec = 0 #msec
         self.yaw_gyro_int = 0 #deg
@@ -66,7 +69,7 @@ class rocket:
                     "time", "pyrostat", "servostat", "accel", "barometer",
                     "baro_alt_filtered", "baro_vel_filtered", "temp", "gyro",
                     "magnetometer", "heading", "gps_fix_status", "lat", "lon", "gpsalt",
-                    "pdop", "hdop", "vdop", "flight_time", "last_rec",
+                    "pdop", "hdop", "vdop","gps_horiz_prec","gps_vert_prec","gps_num_sat", "flight_time", "last_rec",
                     "yaw_gyro_int", "pitch_gyro_int", "roll_gyro_int",
                     "batt_voltage", "rocket_state", "pktnum", "rssi",
                     "armed_pyros", "fired_pyros", "badpackets", "rxrssi",
@@ -212,6 +215,12 @@ class rocket:
             self.pdop = struct.unpack("<f", packet[54:58])[0]
             self.hdop = struct.unpack("<f", packet[58:62])[0]
             self.vdop = struct.unpack("<f", packet[62:66])[0]
+
+            ##### IMPORTANT TODO: RETRIEVE TELEMETRY FOR:
+            #####   -> gps_horiz_prec
+            #####   -> gps_vert_prec
+            #####   -> gps_num_sat
+
             #print("LAT: ", self.lat)
             #print("LONG: ", self.lon)
             #print("GPS ALT (m): ", self.gpsalt)
