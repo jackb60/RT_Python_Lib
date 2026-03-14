@@ -116,8 +116,8 @@ class RocketUI(QWidget):
 
         p_layout = QVBoxLayout()
 
-        self.pyro_table = QTableWidget(0, 4)
-        self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F"])
+        self.pyro_table = QTableWidget(0, 5)
+        self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F", "Resistance"])
         self.pyro_table.verticalHeader().setVisible(False)
         self.pyro_table.setEditTriggers(QTableWidget.NoEditTriggers)
 
@@ -129,7 +129,7 @@ class RocketUI(QWidget):
 
         btn_layout = QHBoxLayout()
 
-        self.pyro_arm_btn = QPushButton("ARM")
+        self.pyro_arm_btn = QPushButton("💪ARM💪")
         self.pyro_arm_btn.clicked.connect(self.pyro_arm)
         btn_layout.addWidget(self.pyro_arm_btn)
 
@@ -397,6 +397,7 @@ class RocketUI(QWidget):
             armed = getattr(self.rocket, "armed", [0]*8)
             fired = getattr(self.rocket, "fired", [0]*8)
             servos = getattr(self.rocket, "servos", [0]*8)
+            resistances = getattr(self.rocket, "pyro_resistances", [None]*8)
 
             display_rows = list(range(0, 6))
             self.pyro_table.setRowCount(len(display_rows))
@@ -422,6 +423,15 @@ class RocketUI(QWidget):
 
                 # armed / fired
                 self.pyro_table.setItem(i, 3, QTableWidgetItem(f"A:{armed[idx]} F:{fired[idx]}"))
+
+                # resistance
+                res_val = resistances[idx]
+                if isinstance(res_val, float):
+                    res_text = f"{res_val:.2f}"
+                else:
+                    res_text = str(res_val)
+
+                self.pyro_table.setItem(i, 4, QTableWidgetItem(res_text))
 
 
         except Exception:

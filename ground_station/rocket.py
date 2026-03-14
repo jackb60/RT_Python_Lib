@@ -55,6 +55,7 @@ class rocket:
         self.accel_integrated_velo = 0 #m/s 
         self.baro_max_alt = 0 #m
         self.gps_max_alt = 0 #m
+        self.pyro_resistances = [0] * 8
         
     
     def log_data_start(self):
@@ -160,8 +161,8 @@ class rocket:
             self.barometer = struct.unpack("<i", packet[20:23] + bytes([0x00]))[0]
             raw_temp = struct.unpack("<i", packet[23:26] + bytes([0x00]))[0]
             
-            C5 = 0x8405  # 33797
-            C6 = 0x6D91  # 28049
+            C5 = 0x91E3
+            C6 = 0x6FEC
 
             # Match C math exactly
             dT = float(raw_temp) - (float(C5) * (1 << 8))
@@ -177,9 +178,11 @@ class rocket:
                     return bytes([0xFF])
                 else:
                     return bytes([0x00])
-            self.magnetometer[0] = struct.unpack("<i", packet[26:29] + sign_extend(28))[0] * 0.0625
-            self.magnetometer[1] = struct.unpack("<i", packet[29:32] + sign_extend(31))[0] * 0.0625
-            self.magnetometer[2] = struct.unpack("<i", packet[32:35] + sign_extend(34))[0] * 0.0625
+            #self.magnetometer[0] = struct.unpack("<i", packet[26:29] + sign_extend(28))[0] * 0.0625
+            #self.magnetometer[1] = struct.unpack("<i", packet[29:32] + sign_extend(31))[0] * 0.0625
+            #self.magnetometer[2] = struct.unpack("<i", packet[32:35] + sign_extend(34))[0] * 0.0625
+            for i in range(0, 6):
+                self.pyro_resistances[i] = packet[26 + i] / 10
             #print("Magnetometer (mG):")
             #print("X: ", self.magnetometer[0])
             #print("Y: ", self.magnetometer[1])
@@ -203,9 +206,9 @@ class rocket:
             else:
                 pass
                 #print("NO")
-            self.lat = struct.unpack("<f", packet[42:46])[0]
-            self.lon = struct.unpack("<f", packet[46:50])[0]
-            self.gpsalt = struct.unpack("<f", packet[50:54])[0]
+            self.lat = struct.unpack("<l", packet[42:46])[0] * 1e-7
+            self.lon = struct.unpack("<l", packet[46:50])[0] * 1e-7
+            self.gpsalt = struct.unpack("<l", packet[50:54])[0] / 1000
             self.pdop = struct.unpack("<f", packet[54:58])[0]
             self.hdop = struct.unpack("<f", packet[58:62])[0]
             self.vdop = struct.unpack("<f", packet[62:66])[0]
