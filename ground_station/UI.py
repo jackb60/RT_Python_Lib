@@ -17,8 +17,10 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QHeaderView,
     QFrame,
+    QMenuBar,
+    QAction
 )
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QKeySequence
 
 from PyQt5.QtCore import QTimer, Qt
 
@@ -38,6 +40,8 @@ DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
 class RocketUI(QWidget):
     def __init__(self):
         super().__init__()
+        self.menubar = QMenuBar(self)
+
         self.setWindowTitle(DEFAULT_WINDOW_TITLE)
         self.rocket = rocket()   # Do not open serial here
         self.pointer = pointer()
@@ -94,6 +98,39 @@ class RocketUI(QWidget):
 
         # --- Main horizontal layout ---
         main_layout = QHBoxLayout()
+        main_layout.setMenuBar(self.menubar)
+        pointermenu = self.menubar.addMenu("Antenna Pointer")
+
+        self.pointerupaction = QAction("Pointer Up", self)
+        self.pointerupaction.triggered.connect(lambda: ((print("[PTR] UP") == None) & (self.pointer_cmd("up") == None)))
+        self.pointerupaction.setShortcut(QKeySequence("Ctrl+Up"))
+        pointermenu.addAction(self.pointerupaction)
+
+        self.pointerdownaction = QAction("Pointer Down", self)
+        self.pointerdownaction.triggered.connect(lambda: ((print("[PTR] DOWN") == None) & (self.pointer_cmd("down") == None)))
+        self.pointerdownaction.setShortcut(QKeySequence("Ctrl+Down"))
+        pointermenu.addAction(self.pointerdownaction)
+        self.pointerrightaction = QAction("Pointer Right", self)
+        self.pointerrightaction.triggered.connect(lambda: ((print("[PTR] Right") == None) & (self.pointer_cmd("right") == None)))
+        self.pointerrightaction.setShortcut(QKeySequence("Ctrl+Right"))
+        pointermenu.addAction(self.pointerrightaction)
+
+        self.pointerleftaction = QAction("Pointer Left", self)
+        self.pointerleftaction.triggered.connect(lambda: ((print("[PTR] Left") == None) & (self.pointer_cmd("left") == None)))
+        self.pointerleftaction.setShortcut(QKeySequence("Ctrl+Left"))
+        pointermenu.addAction(self.pointerleftaction)
+
+        self.pointerleftaction = QAction("Pointer Zero", self)
+        self.pointerleftaction.triggered.connect(lambda: ((print("[PTR] Zero") == None) & (self.pointer_cmd("zero") == None)))
+        self.pointerleftaction.setShortcut(QKeySequence("Ctrl+0"))
+        pointermenu.addAction(self.pointerleftaction)
+
+        #refresh_ports
+        actionsmenu = self.menubar.addMenu("Actions")
+        self.refreshaction = QAction("Refresh Ports", self)
+        self.refreshaction.triggered.connect(self.refresh_ports)
+        self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
+        actionsmenu.addAction(self.refreshaction)
 
         # --- Left: telemetry + safe commands ---
         left_layout = QVBoxLayout()
@@ -104,20 +141,20 @@ class RocketUI(QWidget):
 
         rowLabels = QHBoxLayout()
         tmp = QLabel("Rocket Dynamics")
-        tmp.setStyleSheet("margin-left:60%; margin-right:40%; font-weight:bold;")
-        rowLabels.addWidget(tmp)
+        tmp.setStyleSheet("font-weight:bold;")
+        rowLabels.addWidget(tmp,alignment=Qt.AlignCenter)
         separator = QFrame()
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
         rowLabels.addWidget(separator)
         tmp = QLabel("GPS Info")
-        tmp.setStyleSheet("margin-left:80%; margin-right:40%; font-weight:bold;")
-        rowLabels.addWidget(tmp)
+        tmp.setStyleSheet("font-weight:bold;")
+        rowLabels.addWidget(tmp,alignment=Qt.AlignCenter)
         separator = QFrame()
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
         rowLabels.addWidget(separator)
         tmp = QLabel("Power Status")
-        tmp.setStyleSheet("margin-left:70%; margin-right:40%; font-weight:bold;")
-        rowLabels.addWidget(tmp)
+        tmp.setStyleSheet("font-weight:bold;")
+        rowLabels.addWidget(tmp,alignment=Qt.AlignCenter)
 
         left_layout.addLayout(rowLabels)
 
@@ -153,6 +190,10 @@ class RocketUI(QWidget):
         row.addWidget(self.power_table)
         left_layout.addLayout(row)
 
+        row = QHBoxLayout()
+        vert = QVBoxLayout()
+        row.addLayout(vert)
+
 
         # Safe command buttons
         safe_group = QGroupBox("Safe Commands")
@@ -176,7 +217,71 @@ class RocketUI(QWidget):
         self.pd_activate_btn.clicked.connect(self.pd_activate)
         s_layout.addWidget(self.pd_activate_btn)
         safe_group.setLayout(s_layout)
-        left_layout.addWidget(safe_group)
+        vert.addWidget(safe_group)
+
+        # --- Servo control (safe) ---
+        self.servo_group = QGroupBox("Servo Control (safe)")
+        servo_layout = QHBoxLayout()
+        servo_layout.addWidget(QLabel("Angle (deg):"))
+        self.servo_angle_input = QLineEdit("0.0")
+        servo_layout.addWidget(self.servo_angle_input)
+        self.set_servo_btn = QPushButton("Set Servo Angle")
+        self.set_servo_btn.clicked.connect(self.set_servo_angle)
+        servo_layout.addWidget(self.set_servo_btn)
+        self.servo_group.setLayout(servo_layout)
+        vert.addWidget(self.servo_group)
+
+
+        # --- Poll / Log controls ---
+        pl_row = QHBoxLayout()
+        self.poll_btn = QPushButton("Start Polling")
+        self.poll_btn.clicked.connect(self.toggle_polling)
+        pl_row.addWidget(self.poll_btn)
+
+        self.log_btn = QPushButton("Start Logging")
+        self.log_btn.setCheckable(True)
+        self.log_btn.clicked.connect(self.toggle_logging)
+        pl_row.addWidget(self.log_btn)
+
+        vert.addLayout(pl_row)
+
+        # --- Pointer Control ---
+        
+        
+        self.pointer_group = QGroupBox("Pointer Control")
+        grid = QGridLayout()
+
+        self.btn_up = QPushButton("↑")
+        self.btn_down = QPushButton("↓")
+        self.btn_left = QPushButton("←")
+        self.btn_right = QPushButton("→")
+        self.btn_zero = QPushButton("ZERO")
+
+        self.btn_up.clicked.connect(lambda: self.pointer_cmd("up"))
+        self.btn_down.clicked.connect(lambda: self.pointer_cmd("down"))
+        self.btn_left.clicked.connect(lambda: self.pointer_cmd("left"))
+        self.btn_right.clicked.connect(lambda: self.pointer_cmd("right"))
+        self.btn_zero.clicked.connect(lambda: self.pointer_cmd("zero"))
+
+        grid.addWidget(self.btn_up,    0, 1)
+        grid.addWidget(self.btn_left,  1, 0)
+        grid.addWidget(self.btn_zero,  1, 1)
+        grid.addWidget(self.btn_right, 1, 2)
+        grid.addWidget(self.btn_down,  2, 1)
+
+        # Tracking toggle
+        self.track_toggle = QCheckBox("Tracking ON")
+        self.track_toggle.stateChanged.connect(self.toggle_tracking)
+        grid.addWidget(self.track_toggle, 3, 0, 1, 3)
+
+        self.pointer_group.setLayout(grid)
+        row.addWidget(self.pointer_group)
+        left_layout.addLayout(row)
+
+        
+
+
+
 
         main_layout.addLayout(left_layout, stretch=2)
 
@@ -247,60 +352,7 @@ class RocketUI(QWidget):
 
         self.setLayout(final_layout)
 
-        # --- Servo control (safe) ---
-        servo_group = QGroupBox("Servo Control (safe)")
-        servo_layout = QHBoxLayout()
-        servo_layout.addWidget(QLabel("Angle (deg):"))
-        self.servo_angle_input = QLineEdit("0.0")
-        servo_layout.addWidget(self.servo_angle_input)
-        self.set_servo_btn = QPushButton("Set Servo Angle")
-        self.set_servo_btn.clicked.connect(self.set_servo_angle)
-        servo_layout.addWidget(self.set_servo_btn)
-        servo_group.setLayout(servo_layout)
-        left_layout.addWidget(servo_group)
-
-        # --- Pointer Control ---
-        self.pointer_group = QGroupBox("Pointer Control")
-        grid = QGridLayout()
-
-        self.btn_up = QPushButton("↑")
-        self.btn_down = QPushButton("↓")
-        self.btn_left = QPushButton("←")
-        self.btn_right = QPushButton("→")
-        self.btn_zero = QPushButton("ZERO")
-
-        self.btn_up.clicked.connect(lambda: self.pointer_cmd("up"))
-        self.btn_down.clicked.connect(lambda: self.pointer_cmd("down"))
-        self.btn_left.clicked.connect(lambda: self.pointer_cmd("left"))
-        self.btn_right.clicked.connect(lambda: self.pointer_cmd("right"))
-        self.btn_zero.clicked.connect(lambda: self.pointer_cmd("zero"))
-
-        grid.addWidget(self.btn_up,    0, 1)
-        grid.addWidget(self.btn_left,  1, 0)
-        grid.addWidget(self.btn_zero,  1, 1)
-        grid.addWidget(self.btn_right, 1, 2)
-        grid.addWidget(self.btn_down,  2, 1)
-
-        # Tracking toggle
-        self.track_toggle = QCheckBox("Tracking ON")
-        self.track_toggle.stateChanged.connect(self.toggle_tracking)
-        grid.addWidget(self.track_toggle, 3, 0, 1, 3)
-
-        self.pointer_group.setLayout(grid)
-        left_layout.addWidget(self.pointer_group)
-
-        # --- Poll / Log controls ---
-        pl_row = QHBoxLayout()
-        self.poll_btn = QPushButton("Start Polling")
-        self.poll_btn.clicked.connect(self.toggle_polling)
-        pl_row.addWidget(self.poll_btn)
-
-        self.log_btn = QPushButton("Start Logging")
-        self.log_btn.setCheckable(True)
-        self.log_btn.clicked.connect(self.toggle_logging)
-        pl_row.addWidget(self.log_btn)
-
-        left_layout.addLayout(pl_row)
+        
 
     def pointer_cmd(self, direction):
         if self.pointer is None:
@@ -323,6 +375,7 @@ class RocketUI(QWidget):
     # Port management
     # -------------------------
     def refresh_ports(self):
+        print("[UI] Refreshing Ports")
         self.port_combo.clear()
         ports = list(serial.tools.list_ports.comports())
         if not ports:
@@ -760,7 +813,7 @@ class RocketUI(QWidget):
         self.zero_velo_btn.setEnabled(connected)
         self.zero_servos_btn.setEnabled(connected)
         self.advance_state_btn.setEnabled(connected)
-        self.set_servo_btn.setEnabled(connected)
+        self.servo_group.setEnabled(connected)
         self.pd_activate_btn.setEnabled(connected)
         self.pyro_arm_btn.setEnabled(connected)
         self.pyro_fire_btn.setEnabled(connected)
@@ -772,6 +825,7 @@ def main():
     except Exception as e:
         print(e)
         print("Set font failed :(")
+
     win = RocketUI()
     win.resize(900, 700)
     win.show()

@@ -30,7 +30,7 @@ class pointer:
 
     def connect(self,port=None,baud=115200):
         if self.debug:
-            print("[PTR] Starting connection to {} at rate {}".format(self.port,self.baud))
+            print("[PTR] Starting connection to {} at rate {}".format(port,baud))
         if self.isConnected:
             print("[PTR] Already connected to {} at rate {}".format(self.port,self.baud))
             return True, None
@@ -41,11 +41,11 @@ class pointer:
             self.baud = baud
             self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
             self.isConnected = True
-            print("[PTR] Successful connection to {} at rate {}".format(self.port,self.baud))
+            print("[PTR] Successful connection")
             return True, None
 
         except Exception as e:
-            print("[PTR] Failed to connect to {} at rate {}".format(self.port,self.baud))
+            print("[PTR] Failed to connect to {} at rate {}".format(port,baud))
             if self.debug:
                 print(e)
             self.isConnected = False

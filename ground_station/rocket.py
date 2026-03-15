@@ -380,23 +380,30 @@ class rocket:
         Try to open the serial port. Returns (True, None) on success,
         (False, errmsg) on failure.
         """
+        print("[RKT] Trying to connect to port {}".format(port))
         if port is not None:
             self.serial_port = port
         if self.serial_port is None:
+            print("[RKT] No port specified.")
             return False, "No serial port specified"
 
         try:
             self.ser = serial.Serial(self.serial_port, 115200, timeout=1)
+            print("[RKT] Connection Successful")
             return True, None
         except Exception as e:
             self.ser = None
+            print("[RKT] Connection Failed")
             return False, str(e)
 
     def disconnect_serial(self):
         """Close serial port if open."""
+        print("[RKT] Trying to disconnect from port {}".format(self.serial_port))
         try:
             if self.ser is not None and self.ser.is_open:
                 self.ser.close()
             self.ser = None
+            print("[RKT] Disconnection Successful")
         except Exception:
             self.ser = None
+            print("[RKT] Problem; but disconnection Successful")
