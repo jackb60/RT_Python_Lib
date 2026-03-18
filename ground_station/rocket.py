@@ -59,6 +59,10 @@ class rocket:
         self.baro_max_alt = 0 #m
         self.gps_max_alt = 0 #m
         self.pyro_resistances = [0] * 8
+        self.cell_voltages = [0] * 3
+        self.total_current = 0
+        self.converter_voltages = [0] * 6
+        self.converter_currents = [0] * 6
         
     
     def log_data_start(self):
@@ -212,14 +216,9 @@ class rocket:
             self.lat = struct.unpack("<l", packet[42:46])[0] * 1e-7
             self.lon = struct.unpack("<l", packet[46:50])[0] * 1e-7
             self.gpsalt = struct.unpack("<l", packet[50:54])[0] / 1000
-            self.pdop = struct.unpack("<f", packet[54:58])[0]
-            self.hdop = struct.unpack("<f", packet[58:62])[0]
-            self.vdop = struct.unpack("<f", packet[62:66])[0]
-
-            ##### IMPORTANT TODO: RETRIEVE TELEMETRY FOR:
-            #####   -> gps_horiz_prec
-            #####   -> gps_vert_prec
-            #####   -> gps_num_sat
+            self.gps_horiz_prec = struct.unpack("<L", packet[54:58])[0] / 1000
+            self.gps_horiz_prec = struct.unpack("<L", packet[58:62])[0] / 1000
+            self.gps_num_sat = packet[62]
 
             #print("LAT: ", self.lat)
             #print("LONG: ", self.lon)
@@ -234,32 +233,41 @@ class rocket:
             self.last_rec = struct.unpack("<i", packet[70:74])[0]
             #print("Last Record Time (ms):", self.last_rec)
 
+
+            for i in range(0, 3):
+                self.cell_voltages = struct.unpack("<h", packet[74 + 2 * i: 76 + 2 * i])[0] / 1000.0
+            self.total_current = struct.unpack("<h", packet[80:84])[0] / 1000.0
+
+            for i in range(0, 6):
+                self.converter_voltages = struct.unpack("<h", packet[82 + 2 * i: 84 + 2 * i])[0] * 0.0016
+                self.converter_currents = struct.unpack("<h", packet[94 + 2 * i: 96 + 2 * i])[0] * 0.000625
+
             #Parse Gyro Integrated
-            self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
-            self.pitch_gyro_int = struct.unpack("<f", packet[78:82])[0]
-            self.roll_gyro_int = struct.unpack("<f", packet[82:86])[0]
+            #self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
+            #self.pitch_gyro_int = struct.unpack("<f", packet[78:82])[0]
+            #self.roll_gyro_int = struct.unpack("<f", packet[82:86])[0]
             #print("GYRO Integrated (DEG):")
             #print("X: ", self.yaw_gyro_int)
             #print("Y: ", self.pitch_gyro_int)
             #print("Z: ", self.roll_gyro_int)
 
-            self.heading = struct.unpack("<f", packet[86:90])[0]
+            #self.heading = struct.unpack("<f", packet[86:90])[0]
             #print("MAG HEADING (DEG):", self.heading)
 
             
             #Parse Battery Voltage
-            self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
+            #self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
             #print("Battery Voltage (V):", self.batt_voltage)
 
-            self.state = state(packet[94])
+            #self.state = state(packet[94])
             #print("State:", self.state)
             
-            self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
-            self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
+            #self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
+            #self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
             #print("Baro Filtered Alt (m):", self.barofilteredalt)  
             #print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
 
-            self.accel_integrated_velo = struct.unpack("<f", packet[107:111])[0]
+            #self.accel_integrated_velo = struct.unpack("<f", packet[107:111])[0]
             #print("Accel Integrated Velo (m/s):", self.accel_integrated_velo)
 
             self.baro_max_alt = struct.unpack("<f", packet[111:115])[0]

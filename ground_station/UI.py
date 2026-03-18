@@ -552,8 +552,27 @@ class RocketUI(QWidget):
         }
 
         power_snapshot = {
-            "Battery (V)": getattr(self.rocket, "batt_voltage", ""),
-            "Temp (°C)": getattr(self.rocket, "temp", "")
+            "Cell 1 (V)": getattr(self.rocket, "cell_voltages", "")[0],
+            "Cell 2 (V)": getattr(self.rocket, "cell_voltages", "")[1],
+            "Cell 3 (V)": getattr(self.rocket, "cell_voltages", "")[2],
+            "Total Current (A)": getattr(self.rocket, "total_current", ""),
+            "3V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[0],
+            "3V Current (V): " : getattr(self.rocket, "converter_currents", "")[0],
+
+            "3.3V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[1],
+            "3.3V Current (V): " : getattr(self.rocket, "converter_currents", "")[1],
+
+            "5V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[2],
+            "5V Current (V): " : getattr(self.rocket, "converter_currents", "")[2],
+
+            "7.4V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[3],
+            "7.4V Current (V): " : getattr(self.rocket, "converter_currents", "")[3],
+
+            "8.4V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[4],
+            "8.4V Current (V): " : getattr(self.rocket, "converter_currents", "")[4],
+
+            "28V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[5],
+            "28V Current (V): " : getattr(self.rocket, "converter_currents", "")[5],
         }
 
 
