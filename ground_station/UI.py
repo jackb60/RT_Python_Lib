@@ -26,6 +26,10 @@ from PyQt5.QtCore import QTimer, Qt
 
 from PyQt5.QtGui import QColor
 
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
 from pointer import pointer
 
 # Import rocket class from rocket.py (must be in same folder)
@@ -182,11 +186,12 @@ class RocketUI(QWidget):
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
         row.addWidget(separator)
 
-        self.power_table = QTableWidget(0, 2)
-        self.power_table.setHorizontalHeaderLabels(["Field", "Value"])
+        self.power_table = QTableWidget(0, 4)
+        self.power_table.setHorizontalHeaderLabels(["Name","Enabled", "Voltage", "Current"])
         self.power_table.verticalHeader().setVisible(False)
         self.power_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.power_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.power_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         row.addWidget(self.power_table)
         left_layout.addLayout(row)
 
@@ -370,6 +375,23 @@ class RocketUI(QWidget):
         self.status_label.setText(
             "Tracking enabled" if self.tracking_enabled else "Tracking disabled"
         )
+
+    def toggle_voltage_3V(self):
+        print("[UI] NEW REQ STATE OF 3V: {}".format("ON" if self.chkbx_3V.isChecked() else "OFF"))
+
+    def toggle_voltage_5V(self):
+        print("[UI] NEW REQ STATE OF 5V: {}".format("ON" if self.chkbx_5V.isChecked() else "OFF"))
+
+    def toggle_voltage_7p4V(self):
+        print("[UI] NEW REQ STATE OF 7.4V: {}".format("ON" if self.chkbx_7p4V.isChecked() else "OFF"))
+
+    def toggle_voltage_8p4V(self):
+        print("[UI] NEW REQ STATE OF 8.4V: {}".format("ON" if self.chkbx_8p4V.isChecked() else "OFF"))
+
+    def toggle_voltage_28V(self):
+        print("[UI] NEW REQ STATE OF 28V: {}".format("ON" if self.chkbx_28V.isChecked() else "OFF"))
+
+        
     
     # -------------------------
     # Port management
@@ -551,7 +573,10 @@ class RocketUI(QWidget):
             "GPS Satellite No.": getattr(self.rocket, "gps_num_sat", "")
         }
 
-        power_snapshot = {
+
+
+
+        old_power_snapshot = {
             "Cell 1 (V)": getattr(self.rocket, "cell_voltages", "")[0],
             "Cell 2 (V)": getattr(self.rocket, "cell_voltages", "")[1],
             "Cell 3 (V)": getattr(self.rocket, "cell_voltages", "")[2],
@@ -574,6 +599,15 @@ class RocketUI(QWidget):
             "28V Voltage (V): " : getattr(self.rocket, "converter_voltages", "")[5],
             "28V Current (V): " : getattr(self.rocket, "converter_currents", "")[5],
         }
+        power_snapshot = [
+            ["Total", "-", getattr(self.rocket, "total_current", "")],
+            ["3V",   getattr(self.rocket, "converter_voltages", "")[0], getattr(self.rocket, "converter_currents", "")[0]],
+            ["3.3V", getattr(self.rocket, "converter_voltages", "")[1], getattr(self.rocket, "converter_currents", "")[1]],
+            ["5V",   getattr(self.rocket, "converter_voltages", "")[2], getattr(self.rocket, "converter_currents", "")[2]],
+            ["7.4V", getattr(self.rocket, "converter_voltages", "")[3], getattr(self.rocket, "converter_currents", "")[3]],
+            ["8.4V", getattr(self.rocket, "converter_voltages", "")[4], getattr(self.rocket, "converter_currents", "")[4]],
+            ["28V", getattr(self.rocket, "converter_voltages", "")[5], getattr(self.rocket, "converter_currents", "")[5]],
+        ]
 
 
 
@@ -606,18 +640,48 @@ class RocketUI(QWidget):
             self.gps_table.setItem(row, 1, QTableWidgetItem(display_val))
 
         self.power_table.setRowCount(len(power_snapshot))
-        for row, (k, v) in enumerate(power_snapshot.items()):
-            if isinstance(v, float):
-                if k in ["GPS Lat", "GPS Lon"]:
-                    display_val = f"{v:.5f}"
-                else:
-                    display_val = f"{v:.3f}"
-            elif isinstance(v, list):
-                display_val = str([round(x,3) if isinstance(x,float) else x for x in v])
-            else:
-                display_val = str(v)
-            self.power_table.setItem(row, 0, QTableWidgetItem(str(k)))
-            self.power_table.setItem(row, 1, QTableWidgetItem(display_val))
+        for row,dat in enumerate(power_snapshot):
+            item = QTableWidgetItem(dat[0])
+            item.setTextAlignment(Qt.AlignCenter)
+            self.power_table.setItem(row, 0, item)
+            if self.power_table.cellWidget(row, 1) is None and row != 0 and row != 2:
+                checkbox = QCheckBox()
+                func = self.toggle_voltage_3V
+                if row == 1:
+                    self.chkbx_3V = checkbox
+                if row == 3:
+                    func = self.toggle_voltage_5V
+                    self.chkbx_5V = checkbox
+                elif row == 4:
+                    func = self.toggle_voltage_7p4V
+                    self.chkbx_7p4V = checkbox
+                elif row == 5:
+                    func = self.toggle_voltage_8p4V
+                    self.chkbx_8p4V = checkbox
+                elif row == 6:
+                    func = self.toggle_voltage_28V
+                    self.chkbx_28V = checkbox
+                w = QWidget()
+                l = QHBoxLayout()
+                l.setAlignment(Qt.AlignCenter)
+                checkbox.setChecked(True)
+                checkbox.stateChanged.connect(func)
+                l.addWidget(checkbox)
+                w.setLayout(l)
+                self.power_table.setCellWidget(row, 1, w)
+            elif row == 0 or row == 2:
+                item = QTableWidgetItem('NA')
+                item2 = QTableWidgetItem('NA')
+                item.setTextAlignment(Qt.AlignCenter)
+                item2.setTextAlignment(Qt.AlignCenter)
+                self.power_table.setItem(row, 1, item)
+                self.power_table.setItem(row, 1, item2)
+            item = QTableWidgetItem(dat[1])
+            item2 = QTableWidgetItem(dat[2])
+            item.setTextAlignment(Qt.AlignCenter)
+            item2.setTextAlignment(Qt.AlignCenter)
+            self.power_table.setItem(row, 2, item)
+            self.power_table.setItem(row, 3, item2)
 
         # --- Pyros table ---
         try:
@@ -637,7 +701,6 @@ class RocketUI(QWidget):
                 # create checkbox only once
                 if self.pyro_table.cellWidget(i, 0) is None:
                     checkbox = QCheckBox()
-                    checkbox.setStyleSheet("margin-left:50%; margin-right:50%;")
                     self.pyro_table.setCellWidget(i, 0, checkbox)
 
                 # pyro number
@@ -840,8 +903,13 @@ class RocketUI(QWidget):
 def main():
     app = QApplication(sys.argv)
     try:
-        app.setFont(QFont("Lucida Grande", 12))
+        app.setFont(QFont("Lucida Grande", 12)) # Mac
     except Exception as e:
+        try:
+            app.setFont(QFont("Segoe UI", 12)) # Windows
+        except Exception as e:
+            print(e)
+            print("Set font failed :(")
         print(e)
         print("Set font failed :(")
 
