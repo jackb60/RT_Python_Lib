@@ -217,7 +217,7 @@ class rocket:
             self.lon = struct.unpack("<l", packet[46:50])[0] * 1e-7
             self.gpsalt = struct.unpack("<l", packet[50:54])[0] / 1000
             self.gps_horiz_prec = struct.unpack("<L", packet[54:58])[0] / 1000
-            self.gps_horiz_prec = struct.unpack("<L", packet[58:62])[0] / 1000
+            self.gps_vert_prec = struct.unpack("<L", packet[58:62])[0] / 1000
             self.gps_num_sat = packet[62]
 
             #print("LAT: ", self.lat)
@@ -235,12 +235,12 @@ class rocket:
 
 
             for i in range(0, 3):
-                self.cell_voltages = struct.unpack("<h", packet[74 + 2 * i: 76 + 2 * i])[0] / 1000.0
-            self.total_current = struct.unpack("<h", packet[80:84])[0] / 1000.0
+                self.cell_voltages[i] = struct.unpack("<h", packet[74 + 2 * i: 76 + 2 * i])[0] / 1000.0
+            self.total_current = struct.unpack("<h", packet[80:82])[0] / -1000.0
 
             for i in range(0, 6):
-                self.converter_voltages = struct.unpack("<h", packet[82 + 2 * i: 84 + 2 * i])[0] * 0.0016
-                self.converter_currents = struct.unpack("<h", packet[94 + 2 * i: 96 + 2 * i])[0] * 0.000625
+                self.converter_voltages[i] = struct.unpack("<h", packet[82 + 2 * i: 84 + 2 * i])[0] * 0.0016
+                self.converter_currents[i] = struct.unpack("<h", packet[94 + 2 * i: 96 + 2 * i])[0] * 0.000625
 
             #Parse Gyro Integrated
             #self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
