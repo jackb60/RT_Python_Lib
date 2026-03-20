@@ -31,7 +31,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from pointer import pointer
-
+import numpy as np
 # Import rocket class from rocket.py (must be in same folder)
 try:
     from rocket import rocket
@@ -40,6 +40,8 @@ except Exception as e:
 
 POLL_MS = 1
 DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
+IS_MACOS = True
+
 
 class RocketUI(QWidget):
     def __init__(self):
@@ -103,6 +105,39 @@ class RocketUI(QWidget):
         # --- Main horizontal layout ---
         main_layout = QHBoxLayout()
         main_layout.setMenuBar(self.menubar)
+
+        #refresh_ports
+        actionsmenu = self.menubar.addMenu("Actions")
+        self.refreshaction = QAction("Refresh Ports", self)
+        self.refreshaction.triggered.connect(self.refresh_ports)
+        self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
+        actionsmenu.addAction(self.refreshaction)
+
+        self.toggleConnectGND = QAction("Connect Ground Station", self)
+        self.toggleConnectGND.triggered.connect(self.connect_btn.animateClick)
+        self.toggleConnectGND.setShortcut(QKeySequence("Ctrl+Alt+C"))
+        actionsmenu.addAction(self.toggleConnectGND)
+
+        self.toggleConnectAntenna = QAction("Connect Antenna Pointer", self)
+        self.toggleConnectAntenna.triggered.connect(self.connect_btn_antenna.animateClick)
+        self.toggleConnectAntenna.setShortcut(QKeySequence("Shift+Ctrl+Alt+C"))
+        actionsmenu.addAction(self.toggleConnectAntenna)
+
+        self.togglePollingAction = QAction("Start Polling", self)
+        self.togglePollingAction.triggered.connect(self.toggle_polling)
+        self.togglePollingAction.setShortcut(QKeySequence("Ctrl+Return"))
+        self.togglePollingAction.setEnabled(False)
+        actionsmenu.addAction(self.togglePollingAction)
+
+        self.toggleLoggingAction = QAction("Start Logging", self)
+        self.toggleLoggingAction.triggered.connect(self.toggle_logging)
+        self.toggleLoggingAction.setShortcut(QKeySequence("Ctrl+L"))
+        self.toggleLoggingAction.setEnabled(False)
+        actionsmenu.addAction(self.toggleLoggingAction)
+
+
+
+
         pointermenu = self.menubar.addMenu("Antenna Pointer")
 
         self.pointerupaction = QAction("Pointer Up", self)
@@ -129,12 +164,7 @@ class RocketUI(QWidget):
         self.pointerleftaction.setShortcut(QKeySequence("Ctrl+0"))
         pointermenu.addAction(self.pointerleftaction)
 
-        #refresh_ports
-        actionsmenu = self.menubar.addMenu("Actions")
-        self.refreshaction = QAction("Refresh Ports", self)
-        self.refreshaction.triggered.connect(self.refresh_ports)
-        self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
-        actionsmenu.addAction(self.refreshaction)
+        
 
         # --- Left: telemetry + safe commands ---
         left_layout = QVBoxLayout()
@@ -239,7 +269,8 @@ class RocketUI(QWidget):
 
         # --- Poll / Log controls ---
         pl_row = QHBoxLayout()
-        self.poll_btn = QPushButton("Start Polling")
+        self.poll_btn = QPushButton("Start Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
+        self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")
         self.poll_btn.clicked.connect(self.toggle_polling)
         pl_row.addWidget(self.poll_btn)
 
@@ -301,7 +332,7 @@ class RocketUI(QWidget):
         p_layout = QVBoxLayout()
 
         self.pyro_table = QTableWidget(0, 5)
-        self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F", "Resistance"])
+        self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F", "Rstnc."])
         self.pyro_table.verticalHeader().setVisible(False)
         self.pyro_table.setEditTriggers(QTableWidget.NoEditTriggers)
 
@@ -309,6 +340,7 @@ class RocketUI(QWidget):
         self.pyro_table.setColumnWidth(0, 35)
         self.pyro_table.setColumnWidth(1, 40)
         self.pyro_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.pyro_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         p_layout.addWidget(self.pyro_table)
 
@@ -378,20 +410,31 @@ class RocketUI(QWidget):
 
     def toggle_voltage_3V(self):
         print("[UI] NEW REQ STATE OF 3V: {}".format("ON" if self.chkbx_3V.isChecked() else "OFF"))
+        self.updateMasterToggle()
 
     def toggle_voltage_5V(self):
         print("[UI] NEW REQ STATE OF 5V: {}".format("ON" if self.chkbx_5V.isChecked() else "OFF"))
+        self.updateMasterToggle()
 
     def toggle_voltage_7p4V(self):
         print("[UI] NEW REQ STATE OF 7.4V: {}".format("ON" if self.chkbx_7p4V.isChecked() else "OFF"))
+        self.updateMasterToggle()
 
     def toggle_voltage_8p4V(self):
         print("[UI] NEW REQ STATE OF 8.4V: {}".format("ON" if self.chkbx_8p4V.isChecked() else "OFF"))
+        self.updateMasterToggle()
 
     def toggle_voltage_28V(self):
         print("[UI] NEW REQ STATE OF 28V: {}".format("ON" if self.chkbx_28V.isChecked() else "OFF"))
+        self.updateMasterToggle()
 
-        
+    def updateMasterToggle(self):
+        is3Von   = self.chkbx_3V.isChecked()
+        is5Von   = self.chkbx_5V.isChecked()
+        is7p4Von = self.chkbx_7p4V.isChecked()
+        is8p4Von = self.chkbx_8p4V.isChecked()
+        is28Von  = self.chkbx_28V.isChecked()
+        self.master_power_checkbox.setCheckState(Qt.PartiallyChecked if not(is3Von and is5Von and is7p4Von and is8p4Von and is28Von) else Qt.Checked)
     
     # -------------------------
     # Port management
@@ -415,6 +458,7 @@ class RocketUI(QWidget):
                 self.port_combo_antenna.addItem(p.device)
 
     def connect_serial(self):
+        self.poll_btn.setStyleSheet("color: #1D70F5; font-weight:bold;")
         port = self.port_combo.currentText()
         if not port or port == "No ports":
             QMessageBox.warning(self, "No Port", "No serial port selected.")
@@ -432,6 +476,8 @@ class RocketUI(QWidget):
         self.update_ui_state()
 
     def disconnect_serial(self):
+        if self.polling:
+            self.toggle_polling()
         try:
             if hasattr(self.rocket, "disconnect_serial"):
                 self.rocket.disconnect_serial()
@@ -490,23 +536,35 @@ class RocketUI(QWidget):
         if self.polling:
             self.poll_timer.stop()
             self.polling = False
-            self.poll_btn.setText("Start Polling")
+            self.poll_btn.setText("Start Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
             self.status_label.setText("Polling stopped")
+            self.poll_btn.setStyleSheet("color: #1D70F5; font-weight:bold;")
+            if hasattr(self,"togglePollingAction"):
+                self.togglePollingAction.setText("Start Polling");
         else:
             self.poll_telemetry()
             self.poll_timer.start()
             self.polling = True
-            self.poll_btn.setText("Stop Polling")
+            self.poll_btn.setText("Stop Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
+            self.poll_btn.setStyleSheet("color: #AB0000; font-weight:bold;")
             self.status_label.setText("Polling started")
+            if hasattr(self,"togglePollingAction"):
+                self.togglePollingAction.setText("Stop Polling");
         self.update_ui_state()
 
     def toggle_logging(self):
-        if self.log_btn.isChecked():
+        if not hasattr(self,'is_logging'):
+            self.is_logging = False
+        self.is_logging = not self.is_logging
+        self.log_btn.setChecked(self.log_btn.isChecked())
+        if self.is_logging:
             try:
                 if hasattr(self.rocket, "log_data_start"):
                     self.rocket.log_data_start()
                     self.log_btn.setText("Stop Logging")
                     self.status_label.setText("Logging started")
+                    if hasattr(self,"toggleLoggingAction"):
+                        self.toggleLoggingAction.setText("Stop Logging");
                 else:
                     raise RuntimeError("rocket.log_data_start not implemented")
             except Exception as e:
@@ -518,6 +576,8 @@ class RocketUI(QWidget):
                     self.rocket.log_data_stop()
                     self.log_btn.setText("Start Logging")
                     self.status_label.setText("Logging stopped")
+                    if hasattr(self,"toggleLoggingAction"):
+                        self.toggleLoggingAction.setText("Start Logging");
                 else:
                     raise RuntimeError("rocket.log_data_stop not implemented")
             except Exception as e:
@@ -609,7 +669,17 @@ class RocketUI(QWidget):
             ["28V", getattr(self.rocket, "converter_voltages", "")[5], getattr(self.rocket, "converter_currents", "")[5]],
         ]
 
+        power_snapshot_testing = [
+            ["Total", "-", 0],
+            ["3V",   3,   0],
+            ["3.3V", 3, 0],
+            ["5V",   5,   0],
+            ["7.4V", 8, 0],
+            ["8.4V", 8.6, 0],
+            ["28V",  20,  0],
+        ]
 
+        #power_snapshot = power_snapshot_testing
 
         self.telemetry_table.setRowCount(len(snapshot))
         for row, (k, v) in enumerate(snapshot.items()):
@@ -669,15 +739,44 @@ class RocketUI(QWidget):
                 l.addWidget(checkbox)
                 w.setLayout(l)
                 self.power_table.setCellWidget(row, 1, w)
-            elif row == 0 or row == 2:
-                item = QTableWidgetItem('NA')
-                item2 = QTableWidgetItem('NA')
-                item.setTextAlignment(Qt.AlignCenter)
-                item2.setTextAlignment(Qt.AlignCenter)
-                self.power_table.setItem(row, 1, item)
-                self.power_table.setItem(row, 1, item2)
-            item = QTableWidgetItem(dat[1])
-            item2 = QTableWidgetItem(dat[2])
+            elif self.power_table.cellWidget(row, 1) is None and (row == 0 or row == 2):
+                checkbox = QCheckBox()
+                if row == 0:
+                    self.master_power_checkbox = checkbox
+                checkbox.setChecked(True)
+                checkbox.setEnabled(False)
+                w = QWidget()
+                l = QHBoxLayout()
+                l.setAlignment(Qt.AlignCenter)
+                l.addWidget(checkbox)
+                w.setLayout(l)
+                self.power_table.setCellWidget(row, 1, w)
+            correctVoltage = self.getVoltageByRow(row)
+            color = Qt.black
+            if correctVoltage != -1 and correctVoltage != 100: # two error codes: -1 is row 0 and 100 is unknown row
+                try:
+                    measuredVoltage = float(dat[1])
+                    percErr = np.abs(measuredVoltage-correctVoltage)/correctVoltage
+                    if percErr < 0.02:
+                        color = Qt.darkGreen
+                    elif percErr < 0.05: 
+                        color = QColor(Qt.yellow)
+                        color.setRgb(208, 219, 2) # orange
+                    elif percErr < 0.1:
+                        color = QColor(Qt.red)
+                        color.setRgb(255, 127, 14)
+                    else:
+                        color = Qt.red
+                except:
+                    print("[UI] [Power] Failed conversion of voltage for row {} to number.".format(row))
+                    color = Qt.red
+            if row == 0:
+                color = QColor(Qt.black)
+                color.setAlpha(0)
+
+            item = QTableWidgetItem(str(dat[1])) # voltage
+            item.setBackground(QColor(color))
+            item2 = QTableWidgetItem(str(dat[2])) # current
             item.setTextAlignment(Qt.AlignCenter)
             item2.setTextAlignment(Qt.AlignCenter)
             self.power_table.setItem(row, 2, item)
@@ -699,9 +798,21 @@ class RocketUI(QWidget):
             for i, idx in enumerate(display_rows):
 
                 # create checkbox only once
+                
                 if self.pyro_table.cellWidget(i, 0) is None:
+                    if not hasattr(self,"pyro_checkboxes"):
+                        self.pyro_checkboxes = []
                     checkbox = QCheckBox()
-                    self.pyro_table.setCellWidget(i, 0, checkbox)
+                    try:
+                        self.pyro_checkboxes[i] = checkbox
+                    except:
+                        self.pyro_checkboxes.append(checkbox)
+                    w = QWidget()
+                    l = QHBoxLayout()
+                    l.setAlignment(Qt.AlignCenter)
+                    l.addWidget(checkbox)
+                    w.setLayout(l)
+                    self.pyro_table.setCellWidget(i, 0, w)
 
                 # pyro number
                 self.pyro_table.setItem(i, 1, QTableWidgetItem(str(idx)))
@@ -802,18 +913,18 @@ class RocketUI(QWidget):
 
     def get_selected_pyros(self):
         selected = []
-
-        for row in range(self.pyro_table.rowCount()):
-            widget = self.pyro_table.cellWidget(row, 0)
-
-            if isinstance(widget, QCheckBox) and widget.isChecked():
-                idx_item = self.pyro_table.item(row, 1)
-
-                try:
-                    idx = int(idx_item.text())
-                    selected.append(idx)
-                except:
-                    pass
+        try:
+            for row in range(len(self.pyro_checkboxes)):
+                checkbox = self.pyro_checkboxes[row]
+                if checkbox.isChecked():
+                    idx_item = self.pyro_table.item(row, 1)
+                    try:
+                        idx = int(idx_item.text())
+                        selected.append(idx)
+                    except:
+                        pass
+        except:
+            print("[UI] [Pyros] Could not obtain selected pyros: uninitialized.")
 
         return selected
     
@@ -871,24 +982,44 @@ class RocketUI(QWidget):
     def update_ui_state(self):
         connected = getattr(self.rocket, "ser", None) is not None
         connected_antenna = getattr(self.pointer, "isConnected", False)
+        if hasattr(self,"togglePollingAction"):
+            self.togglePollingAction.setEnabled(connected)
+        if hasattr(self,"toggleLoggingAction"):
+            self.toggleLoggingAction.setEnabled(connected)
+
         self.setWindowTitle(DEFAULT_WINDOW_TITLE + ": GroundStation {}; AntennaPtr {}".format(
             "ONLINE ✅" if connected else "OFFLINE ❌",
             "ONLINE ✅" if connected_antenna else "OFFLINE ❌"))
 
         if connected:
             self.ground_label.setStyleSheet("font-weight:bold; color:#38761D;")
+            if hasattr(self,"toggleConnectGND"):
+                self.toggleConnectGND.setText("Disconnect Ground Station")
+                self.toggleConnectGND.triggered.connect(self.disconnect_btn.animateClick)
         else:
             self.ground_label.setStyleSheet("font-weight:normal; color:#AB0000;")
+            if hasattr(self,"toggleConnectGND"):
+                self.toggleConnectGND.setText("Connect Ground Station")
+                self.toggleConnectGND.triggered.connect(self.connect_btn.animateClick)
         if connected_antenna:
             self.antenna_label.setStyleSheet("font-weight:bold; color:#38761D;")
+            if hasattr(self,"toggleConnectAntenna"):
+                self.toggleConnectAntenna.setText("Disconnect Antenna Pointer")
+                self.toggleConnectAntenna.triggered.connect(self.disconnect_btn_antenna.animateClick)
         else:
             self.antenna_label.setStyleSheet("font-weight:normal; color:#AB0000;")
+            if hasattr(self,"toggleConnectAntenna"):
+                self.toggleConnectAntenna.setText("Connect Antenna Pointer")
+                self.toggleConnectAntenna.triggered.connect(self.connect_btn_antenna.animateClick)
+
         self.connect_btn.setEnabled(not connected)
         self.disconnect_btn.setEnabled(connected)
         self.connect_btn_antenna.setEnabled(not connected_antenna)
         self.disconnect_btn_antenna.setEnabled(connected_antenna)
         self.pointer_group.setEnabled(connected_antenna)
         self.poll_btn.setEnabled(connected)
+        if not connected:
+            self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")
         self.log_btn.setEnabled(connected)
         self.zero_roll_btn.setEnabled(connected)
         self.zero_alt_btn.setEnabled(connected)
@@ -900,10 +1031,34 @@ class RocketUI(QWidget):
         self.pyro_arm_btn.setEnabled(connected)
         self.pyro_fire_btn.setEnabled(connected)
 
+
+
+
+    ## Random
+
+    def getVoltageByRow(self,row):
+        if row == 0:
+            return -1
+        if row == 1:
+            return 3
+        if row == 2:
+            return 3.3
+        if row == 3:
+            return 5
+        if row == 4:
+            return 7.4
+        if row == 5:
+            return 8.4
+        if row == 6:
+            return 28
+        else:
+            return 100 # unknown.
+
 def main():
     app = QApplication(sys.argv)
     try:
         app.setFont(QFont("Lucida Grande", 12)) # Mac
+        IS_MACOS = True
     except Exception as e:
         try:
             app.setFont(QFont("Segoe UI", 12)) # Windows
