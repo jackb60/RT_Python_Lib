@@ -101,7 +101,7 @@ class rocket:
             while self.ser.read(1) != bytes([0xAB]):
                 pass
             packet = self.ser.read(128)
-            self.rssi = self.ser.read(1)[0] - 81
+            self.rssi = struct.unpack("<b", self.ser.read(1)[0]) - 99
             #print(self.rssi)
 
             #Verify checksum
@@ -114,7 +114,7 @@ class rocket:
             if chksum != packet[127]:
                 return False
 
-            self.rxrssi = packet[106] - 92
+            self.rxrssi = struct.unpack("<b", packet[106]) - 99
             #print("RX RSSI:", self.rxrssi)
 
             """
