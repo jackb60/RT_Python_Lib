@@ -308,11 +308,19 @@ class rocket:
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
-    def servos_set_angle(self, angle):
+    def set_roll_control_servo_angle(self, angle):
         data = bytearray(16)
         data[0] = 0xAA
         struct.pack_into("<f", data, 9, angle)
         data[13] = 0x03
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
+
+    def set_airbrakes_angle(self, angle):
+        data = bytearray(16)
+        data[0] = 0xAA
+        struct.pack_into("<f", data, 9, angle)
+        data[13] = 0x0C # NEEDS CHANGE !!
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 

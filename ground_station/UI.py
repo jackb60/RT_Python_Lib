@@ -201,6 +201,7 @@ class RocketUI(QWidget):
         self.telemetry_table.verticalHeader().setVisible(False)
         self.telemetry_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.telemetry_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.telemetry_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         row.addWidget(self.telemetry_table)
         separator = QFrame()
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
@@ -211,6 +212,7 @@ class RocketUI(QWidget):
         self.gps_table.verticalHeader().setVisible(False)
         self.gps_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.gps_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.gps_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         row.addWidget(self.gps_table)
         separator = QFrame()
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
@@ -256,21 +258,62 @@ class RocketUI(QWidget):
 
         # --- Servo control (safe) ---
         self.servo_group = QGroupBox("Servo Control (safe)")
+        whole_servo_layout = QVBoxLayout()
+
+        labelsLayout = QHBoxLayout()
+        tmp = QLabel("Roll Control")
+        tmp.setStyleSheet("font-weight:bold;")
+        labelsLayout.addWidget(tmp,alignment=Qt.AlignCenter)
+        #separator = QFrame()
+        #separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        #labelsLayout.addWidget(separator)
+        tmp = QLabel("Airbrakes Deployment")
+        tmp.setStyleSheet("font-weight:bold;")
+        labelsLayout.addWidget(tmp,alignment=Qt.AlignCenter)
+        whole_servo_layout.addLayout(labelsLayout)
+
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.HLine | QFrame.Sunken)
+        whole_servo_layout.addWidget(separator)
+
+
         servo_layout = QHBoxLayout()
-        servo_layout.addWidget(QLabel("Angle (deg):"))
-        self.servo_angle_input = QLineEdit("0.0")
-        servo_layout.addWidget(self.servo_angle_input)
-        self.set_servo_btn = QPushButton("Set Servo Angle")
-        self.set_servo_btn.clicked.connect(self.set_servo_angle)
-        servo_layout.addWidget(self.set_servo_btn)
-        self.servo_group.setLayout(servo_layout)
+        servoLeftLayout = QHBoxLayout()
+        servoRightLayout = QHBoxLayout()
+
+        # Roll Control
+        servoLeftLayout.addWidget(QLabel("Angle (deg):"))
+        self.rollCtrl_angle_input = QLineEdit("0.0")
+        servoLeftLayout.addWidget(self.rollCtrl_angle_input)
+        self.set_rollCtrl_btn = QPushButton("Set Servo Angle")
+        self.set_rollCtrl_btn.clicked.connect(self.set_roll_control_servo_angle)
+        servoLeftLayout.addWidget(self.set_rollCtrl_btn)
+        servo_layout.addLayout(servoLeftLayout)
+        separator = QFrame()
+        separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
+        servo_layout.addWidget(separator)
+
+
+        # Airbrakes
+        servoRightLayout.addWidget(QLabel("Angle (Deg):"))
+        self.airbrakes_angle_input = QLineEdit("0.0")
+        servoRightLayout.addWidget(self.airbrakes_angle_input)
+        self.set_airbrakes_btn = QPushButton("Set Airbrakes Ang.")
+        self.set_airbrakes_btn.clicked.connect(self.set_airbrakes_angle)
+        servoRightLayout.addWidget(self.set_airbrakes_btn)
+
+
+        servo_layout.addLayout(servoRightLayout)
+
+        whole_servo_layout.addLayout(servo_layout)
+        self.servo_group.setLayout(whole_servo_layout)
         vert.addWidget(self.servo_group)
 
 
         # --- Poll / Log controls ---
         pl_row = QHBoxLayout()
         self.poll_btn = QPushButton("Start Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
-        self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")
+        self.poll_btn.setStyleSheet("color: rgba(83, 139, 230,0.5); font-weight:bold;")
         self.poll_btn.clicked.connect(self.toggle_polling)
         pl_row.addWidget(self.poll_btn)
 
@@ -370,6 +413,8 @@ class RocketUI(QWidget):
 
         self.servo_table = QTableWidget(0, 2)
         self.servo_table.setHorizontalHeaderLabels(["Servo", "Angle"])
+        self.servo_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.servo_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.servo_table.verticalHeader().setVisible(False)
         self.servo_table.setEditTriggers(QTableWidget.NoEditTriggers)
 
@@ -458,7 +503,7 @@ class RocketUI(QWidget):
                 self.port_combo_antenna.addItem(p.device)
 
     def connect_serial(self):
-        self.poll_btn.setStyleSheet("color: #1D70F5; font-weight:bold;")
+        self.poll_btn.setStyleSheet("color: #538be6; font-weight:bold;")
         port = self.port_combo.currentText()
         if not port or port == "No ports":
             QMessageBox.warning(self, "No Port", "No serial port selected.")
@@ -538,7 +583,7 @@ class RocketUI(QWidget):
             self.polling = False
             self.poll_btn.setText("Start Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
             self.status_label.setText("Polling stopped")
-            self.poll_btn.setStyleSheet("color: #1D70F5; font-weight:bold;")
+            self.poll_btn.setStyleSheet("color: #538be6; font-weight:bold;")
             if hasattr(self,"togglePollingAction"):
                 self.togglePollingAction.setText("Start Polling");
         else:
@@ -546,7 +591,7 @@ class RocketUI(QWidget):
             self.poll_timer.start()
             self.polling = True
             self.poll_btn.setText("Stop Polling ({} Enter)".format('Cmd' if IS_MACOS else 'Ctrl'))
-            self.poll_btn.setStyleSheet("color: #AB0000; font-weight:bold;")
+            self.poll_btn.setStyleSheet("color: #9e3131; font-weight:bold;")
             self.status_label.setText("Polling started")
             if hasattr(self,"togglePollingAction"):
                 self.togglePollingAction.setText("Stop Polling");
@@ -619,7 +664,7 @@ class RocketUI(QWidget):
             "Baro Filtered Alt (m)": getattr(self.rocket, "barofilteredalt", ""),
             "Baro Max Alt (m)": getattr(self.rocket, "baro_max_alt", ""),
             "Roll (deg)": getattr(self.rocket, "roll_gyro_int", ""),
-            "Accel Integrated Velo (m/s)": getattr(self.rocket, "accel_integrated_velo", ""),
+            "Accel Int. Velo (m/s)": getattr(self.rocket, "accel_integrated_velo", ""),
         }
 
         GPS_snapshot = {
@@ -692,8 +737,14 @@ class RocketUI(QWidget):
                 display_val = str([round(x,3) if isinstance(x,float) else x for x in v])
             else:
                 display_val = str(v)
+            font = QFont()
+            font.setBold(True)
             self.telemetry_table.setItem(row, 0, QTableWidgetItem(str(k)))
             self.telemetry_table.setItem(row, 1, QTableWidgetItem(display_val))
+            if row == 0:
+                self.telemetry_table.item(0,0).setFont(font)
+                self.telemetry_table.item(0,1).setFont(font)
+                # PLACEHOLDER FOR COLORING THE STATE CELL 
 
         self.gps_table.setRowCount(len(GPS_snapshot))
         for row, (k, v) in enumerate(GPS_snapshot.items()):
@@ -852,9 +903,12 @@ class RocketUI(QWidget):
 
         for i in range(4):
             servo_idx = i
-
-            self.servo_table.setItem(i, 0, QTableWidgetItem(str(servo_idx)))
-            self.servo_table.setItem(i, 1, QTableWidgetItem(str(servos[servo_idx])))
+            item = QTableWidgetItem(str(servo_idx))
+            item.setTextAlignment(Qt.AlignCenter)
+            self.servo_table.setItem(i, 0, item)
+            item = QTableWidgetItem(str(servos[servo_idx]))
+            item.setTextAlignment(Qt.AlignCenter)
+            self.servo_table.setItem(i, 1, item)
 
         self.status_label.setText("Telemetry updated")
         return True
@@ -891,21 +945,37 @@ class RocketUI(QWidget):
                 QMessageBox.critical(self, "Command Error", f"advance_state failed: {e}")
 
 
-    def set_servo_angle(self):
+    def set_roll_control_servo_angle(self):
+        print("[UI] [RollCtrl] Sending Roll Control Servo Angle")
         try:
-            val = float(self.servo_angle_input.text())
+            val = float(self.rollCtrl_angle_input.text())
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Angle must be a number")
             return
-        if hasattr(self.rocket, "servos_set_angle"):
-            self.rocket.servos_set_angle(val)
-            self.status_label.setText(f"servos_set_angle({val}) sent")
+        if hasattr(self.rocket, "set_roll_control_servo_angle"):
+            self.rocket.set_roll_control_servo_angle(val)
+            self.status_label.setText(f"set_roll_control_servo_angle({val}) sent")
+            print("[UI] [RollCtrl] Sent angle {} to roll control".format(val))
     
+
+    def set_airbrakes_angle(self):
+        print("[UI] [Airbrakes] Sending Airbrakes Servo Angle")
+        try:
+            val = float(self.airbrakes_angle_input.text())
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Angle must be a number")
+            return
+        if hasattr(self.rocket, "set_airbrakes_angle"):
+            self.rocket.set_airbrakes_angle(val)
+            self.status_label.setText(f"set_airbrakes_angle({val}) sent")
+            print("[UI] [Airbrakes] Sent angle {} to airbrakes".format(val))
+
     def pd_activate(self):
         try:
             if hasattr(self.rocket, "pd_activate"):
                 self.rocket.pd_activate()
                 self.status_label.setText("pd_activate sent")
+                print("[UI] [RollCtrl] PD Activation Req Sent")
             else:
                 raise RuntimeError("pd_activate not available")
         except Exception as e:
@@ -997,7 +1067,7 @@ class RocketUI(QWidget):
                 self.toggleConnectGND.setText("Disconnect Ground Station")
                 self.toggleConnectGND.triggered.connect(self.disconnect_btn.animateClick)
         else:
-            self.ground_label.setStyleSheet("font-weight:normal; color:#AB0000;")
+            self.ground_label.setStyleSheet("font-weight:normal; color:#9e3131;")
             if hasattr(self,"toggleConnectGND"):
                 self.toggleConnectGND.setText("Connect Ground Station")
                 self.toggleConnectGND.triggered.connect(self.connect_btn.animateClick)
@@ -1007,7 +1077,7 @@ class RocketUI(QWidget):
                 self.toggleConnectAntenna.setText("Disconnect Antenna Pointer")
                 self.toggleConnectAntenna.triggered.connect(self.disconnect_btn_antenna.animateClick)
         else:
-            self.antenna_label.setStyleSheet("font-weight:normal; color:#AB0000;")
+            self.antenna_label.setStyleSheet("font-weight:normal; color:#9e3131;")
             if hasattr(self,"toggleConnectAntenna"):
                 self.toggleConnectAntenna.setText("Connect Antenna Pointer")
                 self.toggleConnectAntenna.triggered.connect(self.connect_btn_antenna.animateClick)
