@@ -64,6 +64,9 @@ class rocket:
         self.total_current = 0
         self.converter_voltages = [0] * 6
         self.converter_currents = [0] * 6
+        self.bms_protections_enabled = 0
+        self.bms_protection_status = 0
+        self.bms_temp = 0
         
     
     def log_data_start(self):
@@ -213,14 +216,16 @@ class rocket:
             for i in range(0, 3):
                 self.cell_voltages[i] = struct.unpack("<h", packet[87 + 2 * i: 89 + 2 * i])[0] / 1000.0
             self.total_current = struct.unpack("<h", packet[93:95])[0] / -1000.0
+            self.bms_temp = packet[95] / 2
             self.bms_protection_status = packet[96]
+            self.bms_protections_enabled = packet[97]
 
             for i in range(0, 6):
-                self.converter_voltages[i] = struct.unpack("<h", packet[97 + 2 * i: 99 + 2 * i])[0] * 0.0016
-                self.converter_currents[i] = struct.unpack("<h", packet[109 + 2 * i: 111 + 2 * i])[0] * 0.000625
+                self.converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
+                self.converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
             
             #Parse Integrated Acceleration
-            self.accel_integrated_velo = struct.unpack("<f", packet[121:125])[0]
+            self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
             if self.logging:
                 data = [
