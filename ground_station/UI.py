@@ -41,6 +41,7 @@ except Exception as e:
 POLL_MS = 1
 DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
 IS_MACOS = True
+REASONABLE_TEMP = 30
 
 
 class RocketUI(QWidget):
@@ -235,9 +236,9 @@ class RocketUI(QWidget):
         # Safe command buttons
         safe_group = QGroupBox("Safe Commands")
         s_layout = QHBoxLayout()
-        self.zero_roll_btn = QPushButton("Zero Roll")
-        self.zero_roll_btn.clicked.connect(self.zero_roll)
-        s_layout.addWidget(self.zero_roll_btn)
+        self.zero_pitchYawRoll_btn = QPushButton("Zero P/Y/Roll")
+        self.zero_pitchYawRoll_btn.clicked.connect(self.zero_pitchYawRoll)
+        s_layout.addWidget(self.zero_pitchYawRoll_btn)
         self.zero_alt_btn = QPushButton("Zero Alt")
         self.zero_alt_btn.clicked.connect(self.zero_alt)
         s_layout.addWidget(self.zero_alt_btn)
@@ -367,6 +368,45 @@ class RocketUI(QWidget):
             # --- Right side panel ---
         right_layout = QVBoxLayout()
 
+        self.emerg_group = QGroupBox("EMERGENCY COMMANDS")
+        self.emerg_group.setStyleSheet("""
+            QGroupBox {
+                background-color: rgba(171,0,0,0.1);
+            }
+            """)
+        vl = QVBoxLayout()
+        hl1 = QHBoxLayout()
+        hl2 = QHBoxLayout()
+        
+        self.EMERG_piston_btn = QPushButton("PISTON")
+        self.EMERG_piston_btn.clicked.connect(self.EMERG_DEPLOY_PISTON)
+        hl1.addWidget(self.EMERG_piston_btn)
+
+        self.EMERG_bp_wells_btn = QPushButton("BP WELLS")
+        self.EMERG_bp_wells_btn.clicked.connect(self.EMERG_DEPLOY_BP_WELLS)
+        hl1.addWidget(self.EMERG_bp_wells_btn)
+
+        self.EMERG_td_btn = QPushButton("TNDR DSNDR")
+        self.EMERG_td_btn.clicked.connect(self.EMERG_DEPLOY_TD)
+        hl1.addWidget(self.EMERG_td_btn)
+
+        self.EMERG_all_btn = QPushButton("FIRE ALL RECOVERY MEASURES")
+        self.EMERG_all_btn.clicked.connect(self.EMERG_DEPLOY_ALL)
+        hl2.addWidget(self.EMERG_all_btn)
+
+        vl.addLayout(hl1)
+        vl.addLayout(hl2)
+
+        self.emerg_group.setLayout(vl)
+        right_layout.addWidget(self.emerg_group)
+
+
+
+
+
+
+
+
         # --------------------
         # Pyro table
         # --------------------
@@ -389,11 +429,11 @@ class RocketUI(QWidget):
 
         btn_layout = QHBoxLayout()
 
-        self.pyro_arm_btn = QPushButton("💪 ARM 💪")
+        self.pyro_arm_btn = QPushButton("ARM")
         self.pyro_arm_btn.clicked.connect(self.pyro_arm)
         btn_layout.addWidget(self.pyro_arm_btn)
 
-        self.pyro_fire_btn = QPushButton("💥 FIRE 💥")
+        self.pyro_fire_btn = QPushButton("FIRE")
         self.pyro_fire_btn.clicked.connect(self.pyro_fire)
         btn_layout.addWidget(self.pyro_fire_btn)
 
@@ -665,6 +705,8 @@ class RocketUI(QWidget):
             "Baro Max Alt (m)": getattr(self.rocket, "baro_max_alt", ""),
             "Roll (deg)": getattr(self.rocket, "roll_gyro_int", ""),
             "Accel Int. Velo (m/s)": getattr(self.rocket, "accel_integrated_velo", ""),
+            "Angle From Vert. (°)": getattr(self.rocket, "angleFromVertical", ""),
+            "Temperature (°C)": getattr(self.rocket, "temp", ""),
         }
 
         GPS_snapshot = {
@@ -712,6 +754,7 @@ class RocketUI(QWidget):
             ["7.4V", getattr(self.rocket, "converter_voltages", "")[3], getattr(self.rocket, "converter_currents", "")[3]],
             ["8.4V", getattr(self.rocket, "converter_voltages", "")[4], getattr(self.rocket, "converter_currents", "")[4]],
             ["28V", getattr(self.rocket, "converter_voltages", "")[5], getattr(self.rocket, "converter_currents", "")[5]],
+            ["Pwr Temp (°C)", getattr(self.rocket, "bms_temp", ""), "-"],
         ]
 
         power_snapshot_testing = [
@@ -722,6 +765,7 @@ class RocketUI(QWidget):
             ["7.4V", 8, 0],
             ["8.4V", 8.6, 0],
             ["28V",  20,  0],
+            ["Pwr Temp (°C)",  25,  "-"],
         ]
 
         #power_snapshot = power_snapshot_testing
@@ -765,7 +809,8 @@ class RocketUI(QWidget):
             item = QTableWidgetItem(dat[0])
             item.setTextAlignment(Qt.AlignCenter)
             self.power_table.setItem(row, 0, item)
-            if self.power_table.cellWidget(row, 1) is None and row != 0 and row != 2:
+            specialRows = [0,2,7]
+            if self.power_table.cellWidget(row, 1) is None and row not in specialRows:
                 checkbox = QCheckBox()
                 func = self.toggle_voltage_3V
                 if row == 1:
@@ -790,7 +835,7 @@ class RocketUI(QWidget):
                 l.addWidget(checkbox)
                 w.setLayout(l)
                 self.power_table.setCellWidget(row, 1, w)
-            elif self.power_table.cellWidget(row, 1) is None and (row == 0 or row == 2):
+            elif self.power_table.cellWidget(row, 1) is None and row in specialRows:
                 checkbox = QCheckBox()
                 if row == 0:
                     self.master_power_checkbox = checkbox
@@ -824,6 +869,22 @@ class RocketUI(QWidget):
             if row == 0:
                 color = QColor(Qt.black)
                 color.setAlpha(0)
+            if row == 7:
+                try:
+                    temp = float(dat[1])
+                    print("[UI] [Power] Measured temperature {}".format(temp))
+                    err = temp - REASONABLE_TEMP
+                    print("[UI] [Power] Abnormality in temperature {}".format(err))  
+                    if err < 5:
+                        color = Qt.darkGreen
+                    elif err < 10:
+                        color = QColor(Qt.yellow)
+                        color.setRgb(208, 219, 2) # orange
+                    elif err < 20:
+                        color = QColor(Qt.red)
+                except:
+                    print("[UI] [Power] Failed conversion of temperature to number: {}".format(dat[1]))
+                    color = QColor(Qt.red)
 
             item = QTableWidgetItem(str(dat[1])) # voltage
             item.setBackground(QColor(color))
@@ -912,12 +973,88 @@ class RocketUI(QWidget):
 
         self.status_label.setText("Telemetry updated")
         return True
+  
+
+    # -------------------------
+    # EMERGENCY command wrappers
+    # -------------------------
+
+    def EMERG_DEPLOY_PISTON(self):
+        confirm = QMessageBox.critical(
+            self, "Confirm Deploy Piston Recovery Method ?",
+            "Confirm Deploy Piston Recovery Method ?\n\nTHIS WILL FIRE THE PISTON.\nDO NOT FIRE IN PROXIMITY OF PEOPLE !! \n\nAre you sure ?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "EMERG_DEPLOY_PISTON"): self.rocket.EMERG_DEPLOY_PISTON()
+                self.status_label.setText("Sent EMERGENCY DEPLOY PISTON")
+            except Exception as e:
+                QMessageBox.critical(self, "Command Error", f"emergency_deploy_piston failed: {e}")
+        else:
+            self.status_label.setText("No command sent.") 
+
+    def EMERG_DEPLOY_BP_WELLS(self):
+        confirm = QMessageBox.critical(
+            self, "Confirm Deploy BP Wells Recovery Method ?",
+            "Confirm Deploy BP Wells Recovery Method ?\n\nTHIS WILL FIRE BLACK POWDER WELLS.\nDO NOT FIRE IN PROXIMITY OF PEOPLE !! \n\nAre you sure ?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "EMERG_DEPLOY_BP_WELLS"): self.rocket.EMERG_DEPLOY_BP_WELLS()
+                self.status_label.setText("Sent EMERGENCY DEPLOY BP WELLS")
+            except Exception as e:
+                QMessageBox.critical(self, "Command Error", f"emergency_deploy_bp_wells failed: {e}")
+        else:
+            self.status_label.setText("No command sent.")
+
+    def EMERG_DEPLOY_TD(self):
+        confirm = QMessageBox.critical(
+            self, "Confirm Deploy TD Recovery Method ?",
+            "Confirm Deploy TD Recovery Methods ?\n\nTHIS WILL FIRE THE TENDER DESCENDER.\nDO NOT FIRE IN PROXIMITY OF PEOPLE !! \n\nAre you sure ?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "EMERG_DEPLOY_TD"): self.rocket.EMERG_DEPLOY_TD()
+                self.status_label.setText("Sent EMERGENCY DEPLOY ALL")
+            except Exception as e:
+                QMessageBox.critical(self, "Command Error", f"emergency_deploy_all failed: {e}")
+        else:
+            self.status_label.setText("No command sent.")
+
+    def EMERG_DEPLOY_ALL(self):
+        confirm = QMessageBox.critical(
+            self, "Confirm Deploy All Recovery Methods ?",
+            "Confirm Deploy All Recovery Methods ?\n\nTHIS WILL FIRE PISTON, BLACK POWDER WELLS, AND THE TENDER DESCENDER.\nDO NOT FIRE IN PROXIMITY OF PEOPLE !! \n\nAre you sure ?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                if hasattr(self.rocket, "EMERG_DEPLOY_ALL"): self.rocket.EMERG_DEPLOY_ALL()
+                self.status_label.setText("Sent EMERGENCY DEPLOY ALL")
+            except Exception as e:
+                QMessageBox.critical(self, "Command Error", f"emergency_deploy_all failed: {e}")
+        else:
+            self.status_label.setText("No command sent.")
+
+
+
+
+
+
+
+
+
+
+
     # -------------------------
     # Safe command wrappers
     # -------------------------
-    def zero_roll(self):
-        if hasattr(self.rocket, "zero_roll"): self.rocket.zero_roll()
-        self.status_label.setText("zero_roll sent")
+    def zero_pitchYawRoll(self):
+        if hasattr(self.rocket, "zero_pitchYawRoll"): self.rocket.zero_pitchYawRoll()
+        self.status_label.setText("zero_pitchYawRoll sent")
 
     def zero_alt(self):
         if hasattr(self.rocket, "zero_alt"): self.rocket.zero_alt()
@@ -1091,7 +1228,7 @@ class RocketUI(QWidget):
         if not connected:
             self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")
         self.log_btn.setEnabled(connected)
-        self.zero_roll_btn.setEnabled(connected)
+        self.zero_pitchYawRoll_btn.setEnabled(connected)
         self.zero_alt_btn.setEnabled(connected)
         self.zero_velo_btn.setEnabled(connected)
         self.zero_servos_btn.setEnabled(connected)
@@ -1100,6 +1237,13 @@ class RocketUI(QWidget):
         self.pd_activate_btn.setEnabled(connected)
         self.pyro_arm_btn.setEnabled(connected)
         self.pyro_fire_btn.setEnabled(connected)
+        self.emerg_group.setEnabled(connected)
+        for btn in [self.EMERG_all_btn, self.EMERG_td_btn, self.EMERG_bp_wells_btn, self.EMERG_piston_btn]:
+            btn.setStyleSheet(
+                "color: rgba(250, 0, 0,0.5); font-weight:bold;" if not connected else
+                "color: rgba(250, 0, 0,1); font-weight:bold;"
+                )
+
 
 
 
@@ -1139,7 +1283,7 @@ def main():
         print("Set font failed :(")
 
     win = RocketUI()
-    win.resize(900, 700)
+    win.resize(900, 900)
     win.show()
     sys.exit(app.exec_())
 

@@ -29,7 +29,7 @@ class rocket:
         self.barometer = 0
         self.barofilteredalt = 0  #m
         self.barofilteredvelo = 0  #m/s
-        self.temp = 0 #deg C
+        self.temp = 0 #deg C # from baro
         self.gyro = [0, 0, 0] #x, y, z, deg/s
         self.magnetometer = [0, 0, 0] #x, y, z, Gauss
         self.heading = 0 #deg
@@ -66,7 +66,11 @@ class rocket:
         self.converter_currents = [0] * 6
         self.bms_protections_enabled = 0
         self.bms_protection_status = 0
-        self.bms_temp = 0
+        self.bms_temp = 0 # battery source
+        
+
+
+        self.angleFromVertical = 0 
         
     
     def log_data_start(self):
@@ -227,6 +231,11 @@ class rocket:
             #Parse Integrated Acceleration
             self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
+
+
+            self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi;
+
+
             if self.logging:
                 data = [
                     time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
@@ -243,12 +252,17 @@ class rocket:
                 os.fsync(self.file.fileno())
             return True
 
-    def zero_roll(self):
+    def zero_pitchYawRoll(self):
         data = bytearray(16)
         data[0] = 0xAA
         data[13] = 0x09
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
+
+    def zero_roll(self):
+        # obsolete.
+        print("[RKT] Warning. Obsolete method, resets pitch and yaw as well.")
+        self.zero_pitchYawRoll()
 
     def zero_alt(self):
         data = bytearray(16)
@@ -369,3 +383,52 @@ class rocket:
         except Exception:
             self.ser = None
             print("[RKT] Problem; but disconnection Successful")
+
+
+
+    def EMERG_DEPLOY_PISTON(self):
+        print("[RKT] [EMERGENCY] Req deployment of piston...")
+
+        # TODO IMPLEMENT EMERGENCY PISTON DEPLOYMENT
+
+        print("[RKT] [EMERGENCY] Piston Deployment Reqd.")
+
+    def EMERG_DEPLOY_BP_WELLS(self):
+        print("[RKT] [EMERGENCY] Req deployment of Black Powder Wells...")
+
+        # TODO IMPLEMENT EMERGENCY BP WELLS DEPLOYMENT
+
+        print("[RKT] [EMERGENCY] BP Wells Deployment Reqd.")
+
+    def EMERG_DEPLOY_TD(self):
+        print("[RKT] [EMERGENCY] Req deployment of Tender Descender...")
+
+        # TODO IMPLEMENT EMERGENCY TENDER DESCENDER
+
+        print("[RKT] [EMERGENCY] TD Deployment Reqd.")
+
+    def EMERG_DEPLOY_ALL(self):
+        print("[RKT] [EMERGENCY] Req deployment of ALL RECOVERY MEASURES")
+
+        # TODO IMPLEMENT EMERGENCY ALL MEASURES FOR RECOVERY
+
+        print("[RKT] [EMERGENCY] All recovery measures deployment requested.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
