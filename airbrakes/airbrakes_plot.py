@@ -2,8 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Read files
-pred = pd.read_csv("c:/Users/jackb/RT_Python_Lib/airbrakes/dat/6225/airbrakes_input.csv")   # columns: Time, Predicted DP
-actual = pd.read_csv("c:/Users/jackb/RT_Python_Lib/airbrakes/dat/6225/airbrakes_output.csv")    # columns: Time, Actual DP
+pred = pd.read_csv("dat/6275/airbrakes_input.csv")   # columns: Time, Predicted DP
+actual = pd.read_csv("airbrakes_output.csv")    # columns: Time, Actual DP
 
 # Plot
 plt.figure()

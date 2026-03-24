@@ -16,14 +16,15 @@ class state(Enum):
 
 class rocket:
     def __init__(self):
+        #to-do: clean this up
         self.pid = [0, 0, 0] #p, i, d
         self.ser = None# serial.Serial('COM11', 115200, timeout=1)
         self.logging = False
         self.file = None
         self.csv_writer = None
 
-        self.pyros = [0] * 8
-        self.servos = [0] * 8
+        self.pyros = [0] * 6
+        self.servos = [0] * 4
         self.accelerometer = [0, 0, 0] #x, y, z, m/s^2
         self.barometer = 0
         self.barofilteredalt = 0  #m
@@ -39,6 +40,9 @@ class rocket:
         self.pdop = 0
         self.hdop = 0
         self.vdop = 0
+        self.gps_horiz_prec = -1
+        self.gps_vert_prec = -1
+        self.gps_num_sat = 0
         self.flight_time = 0 #msec
         self.last_rec = 0 #msec
         self.yaw_gyro_int = 0 #deg
@@ -55,6 +59,14 @@ class rocket:
         self.accel_integrated_velo = 0 #m/s 
         self.baro_max_alt = 0 #m
         self.gps_max_alt = 0 #m
+        self.pyro_resistances = [0] * 8
+        self.cell_voltages = [0] * 3
+        self.total_current = 0
+        self.converter_voltages = [0] * 6
+        self.converter_currents = [0] * 6
+        self.bms_protections_enabled = 0
+        self.bms_protection_status = 0
+        self.bms_temp = 0
         
     
     def log_data_start(self):
@@ -65,7 +77,7 @@ class rocket:
                     "time", "pyrostat", "servostat", "accel", "barometer",
                     "baro_alt_filtered", "baro_vel_filtered", "temp", "gyro",
                     "magnetometer", "heading", "gps_fix_status", "lat", "lon", "gpsalt",
-                    "pdop", "hdop", "vdop", "flight_time", "last_rec",
+                    "pdop", "hdop", "vdop","gps_horiz_prec","gps_vert_prec","gps_num_sat", "flight_time", "last_rec",
                     "yaw_gyro_int", "pitch_gyro_int", "roll_gyro_int",
                     "batt_voltage", "rocket_state", "pktnum", "rssi",
                     "armed_pyros", "fired_pyros", "badpackets", "rxrssi",
@@ -93,8 +105,8 @@ class rocket:
             while self.ser.read(1) != bytes([0xAB]):
                 pass
             packet = self.ser.read(128)
-            self.rssi = self.ser.read(1)[0] - 81
-            #print(self.rssi)
+            self.rssi = struct.unpack("<b", self.ser.read(1)[0]) - 99
+            #to-do: parse ground station gps coords
 
             #Verify checksum
             chksum = 0
@@ -105,9 +117,8 @@ class rocket:
             
             if chksum != packet[127]:
                 return False
-
-            self.rxrssi = packet[106] - 92
-            #print("RX RSSI:", self.rxrssi)
+            
+            #to-do: still store packets with failed checksum somewhere
 
             """
             Parse pyros
@@ -117,150 +128,105 @@ class rocket:
                 2 = Connected
                 3 = Fired Successfully
             """
-            #print("Pyros (0 = FAILURE, 1 = UNCONNECTED, 2 = CONNECTED, 3 = SUCCESS):")
             pyro_info = packet[0] + (packet[1] << 8)
-            for i in range(0, 8):
-                #Bitmask the two bits we care about
+            for i in range(0, 6):
                 self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
-                #print(i, ": ", end="")
-                #print(self.pyros[i])
-            armed = packet[103]
-            for i in range(0,8):
-                self.armed[i] = (armed >> i) & 0x01
-                #if self.armed[i]:
-                    #print(f"WARNING: Pyro {i} ARMED")
             
-            fired = packet[104]
-            for i in range(0,8):
+            armed = packet[2]
+            for i in range(0, 6):
+                self.armed[i] = (armed >> i) & 0x01
+            
+            fired = packet[3]
+            for i in range(0, 6):
                 self.fired[i] = (fired >> i) & 0x01
-                #if self.fired[i]:
-                    #print(f"EVENT: Pyro {i} FIRED")
+
+            for i in range(0, 6):
+                self.pyro_resistances[i] = packet[4 + i] / 10
             
             #Parse servos
-            #print("Servos (drive signal in microseconds):")
+            #to-do: convert to angles
             servo_info = 0
-            for i in range(0, 12):
-                servo_info += packet[2 + i] << (8 * i)
+            for i in range(0, 6):
+                servo_info += packet[10 + i] << (8 * i)
 
-            for i in range(0, 8):
+            for i in range(0, 4):
                 self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
-                #print(i, ": ", end="")
-                #print(self.servos[i])
             
             #Parse accelerometer
-            self.accelerometer[0] = struct.unpack("<h", packet[14:16])[0] * 0.00390625 * 9.80665
-            self.accelerometer[1] = struct.unpack("<h", packet[16:18])[0] * 0.00390625 * 9.80665
-            self.accelerometer[2] = struct.unpack("<h", packet[18:20])[0] * 0.00390625 * 9.80665
-            #print("Accelerometer (m/s^2):")
-            #print("X: ", self.accelerometer[0])
-            #print("Y: ", self.accelerometer[1])
-            #print("Z: ", self.accelerometer[2])
-
-            #Parse barometer
-            self.barometer = struct.unpack("<i", packet[20:23] + bytes([0x00]))[0]
-            raw_temp = struct.unpack("<i", packet[23:26] + bytes([0x00]))[0]
-            
-            C5 = 0x8405  # 33797
-            C6 = 0x6D91  # 28049
-
-            # Match C math exactly
-            dT = float(raw_temp) - (float(C5) * (1 << 8))
-            TEMP = 2000.0 + dT * float(C6) / float(1 << 23)
-
-            self.temp = TEMP / 100.0  # °C
-            ##print("Baro Raw:", self.barometer)
-            ##print("Temp Raw:", self.temp)
-            
-            #Parse magnetometer
-            def sign_extend(i):
-                if(packet[i] & 0x80):
-                    return bytes([0xFF])
-                else:
-                    return bytes([0x00])
-            self.magnetometer[0] = struct.unpack("<i", packet[26:29] + sign_extend(28))[0] * 0.0625
-            self.magnetometer[1] = struct.unpack("<i", packet[29:32] + sign_extend(31))[0] * 0.0625
-            self.magnetometer[2] = struct.unpack("<i", packet[32:35] + sign_extend(34))[0] * 0.0625
-            #print("Magnetometer (mG):")
-            #print("X: ", self.magnetometer[0])
-            #print("Y: ", self.magnetometer[1])
-            #print("Z: ", self.magnetometer[2])
+            self.accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
+            self.accelerometer[1] = int.from_bytes(packet[19:22], byteorder='little', signed=True) / 12800.0 * 9.80665
+            self.accelerometer[2] = int.from_bytes(packet[22:25], byteorder='little', signed=True) / 12800.0 * 9.80665
 
             #Parse gyro
-            self.gyro[0] = struct.unpack("<h", packet[35:37])[0] * 0.03051757812
-            self.gyro[1] = struct.unpack("<h", packet[37:39])[0] * -0.03051757812
-            self.gyro[2] = struct.unpack("<h", packet[39:41])[0] * 0.03051757812
-            #print("Gyro (deg/s):")
-            #print("X: ", self.gyro[0])
-            #print("Y: ", self.gyro[1])
-            #print("Z: ", self.gyro[2])
+            self.gyro[0] = struct.unpack("<h", packet[25:27])[0] * 0.03051757812
+            self.gyro[1] = struct.unpack("<h", packet[27:29])[0] * -0.03051757812
+            self.gyro[2] = struct.unpack("<h", packet[29:31])[0] * 0.03051757812
 
             #Parse GPS
-            self.gps_fix = packet[41]
-            #print("GPS FIX: ", end="")
-            if(self.gps_fix):
-                pass
-                #print("YES")
-            else:
-                pass
-                #print("NO")
-            self.lat = struct.unpack("<f", packet[42:46])[0]
-            self.lon = struct.unpack("<f", packet[46:50])[0]
-            self.gpsalt = struct.unpack("<f", packet[50:54])[0]
-            self.pdop = struct.unpack("<f", packet[54:58])[0]
-            self.hdop = struct.unpack("<f", packet[58:62])[0]
-            self.vdop = struct.unpack("<f", packet[62:66])[0]
-            #print("LAT: ", self.lat)
-            #print("LONG: ", self.lon)
-            #print("GPS ALT (m): ", self.gpsalt)
-            #print("PDOP: ", self.pdop)
-            #print("HDOP: ", self.hdop)
-            #print("VDOP: ", self.vdop)
+            self.gps_fix = packet[31]
+            self.lat = struct.unpack("<l", packet[32:36])[0] * 1e-7
+            self.lon = struct.unpack("<l", packet[36:40])[0] * 1e-7
+            self.gpsalt = struct.unpack("<l", packet[40:44])[0] / 1000
+            self.gps_horiz_prec = struct.unpack("<L", packet[44:48])[0] / 1000
+            self.gps_vert_prec = struct.unpack("<L", packet[48:52])[0] / 1000
+            self.gps_num_sat = packet[52]
 
-            #Parse Timing
-            self.flight_time = struct.unpack("<i", packet[66:70])[0]
-            #print("Flight Time (ms):", self.flight_time)
-            self.last_rec = struct.unpack("<i", packet[70:74])[0]
-            #print("Last Record Time (ms):", self.last_rec)
+            #Parse barometer
+            C1 = 0xA27A
+            C2 = 0x92E4
+            C3 = 0x6951
+            C4 = 0x61EF
+            C5 = 0x91E3
+            C6 = 0x6FEC
+            self.raw_press = int.from_bytes(packet[53:56], byteorder='little', signed=False)
+            self.raw_temp = int.from_bytes(packet[56:59], byteorder='little', signed=False)
+
+            #Temperature conversion
+            dT = float(self.raw_temp) - (float(C5) * (1 << 8))
+            TEMP = 2000.0 + dT * float(C6) / float(1 << 23)
+            self.temp = TEMP / 100.0  # °C
+
+            #to-do: Pressure/Alt conversion
+            
+            #Parse moving avg height
+            self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+
+            #Parse state
+            self.state = state(packet[63])
 
             #Parse Gyro Integrated
-            self.yaw_gyro_int = struct.unpack("<f", packet[74:78])[0]
-            self.pitch_gyro_int = struct.unpack("<f", packet[78:82])[0]
-            self.roll_gyro_int = struct.unpack("<f", packet[82:86])[0]
-            #print("GYRO Integrated (DEG):")
-            #print("X: ", self.yaw_gyro_int)
-            #print("Y: ", self.pitch_gyro_int)
-            #print("Z: ", self.roll_gyro_int)
+            self.roll_gyro_int = struct.unpack("<f", packet[64:68])[0]
+            self.pitch_gyro_int = struct.unpack("<f", packet[68:72])[0]
+            self.yaw_gyro_int = struct.unpack("<f", packet[72:76])[0]
 
-            self.heading = struct.unpack("<f", packet[86:90])[0]
-            #print("MAG HEADING (DEG):", self.heading)
-
+            #Parse Max Alts
+            self.gps_max_alt = struct.unpack("<H", packet[76:78])[0]
+            self.baro_max_alt = struct.unpack("<H", packet[78:80])[0]
             
-            #Parse Battery Voltage
-            self.batt_voltage = struct.unpack("<f", packet[90:94])[0]
-            #print("Battery Voltage (V):", self.batt_voltage)
+            #Parse Timing
+            self.flight_time = struct.unpack("<L", packet[80:84])[0]
 
-            self.state = state(packet[94])
-            #print("State:", self.state)
+            #Parse Packet Number
+            self.pktnum = struct.unpack("<H", packet[84:86])[0]
             
-            self.barofilteredalt = struct.unpack("<f", packet[95:99])[0]
-            self.barofilteredvelo = struct.unpack("<f", packet[99:103])[0]
-            #print("Baro Filtered Alt (m):", self.barofilteredalt)  
-            #print("Baro Filtered Velo (m/s):", self.barofilteredvelo)
+            #Parse RSSI
+            self.rxrssi = struct.unpack("<b", packet[86]) - 99
 
-            self.accel_integrated_velo = struct.unpack("<f", packet[107:111])[0]
-            #print("Accel Integrated Velo (m/s):", self.accel_integrated_velo)
+            #Parse BMS
+            for i in range(0, 3):
+                self.cell_voltages[i] = struct.unpack("<h", packet[87 + 2 * i: 89 + 2 * i])[0] / 1000.0
+            self.total_current = struct.unpack("<h", packet[93:95])[0] / -1000.0
+            self.bms_temp = packet[95] / 2
+            self.bms_protection_status = packet[96]
+            self.bms_protections_enabled = packet[97]
 
-            self.baro_max_alt = struct.unpack("<f", packet[111:115])[0]
-            #print("Baro Max Alt (m):", self.baro_max_alt)
-
-            self.gps_max_alt = struct.unpack("<f", packet[115:119])[0]
-            #print("GPS Max Alt (m):", self.gps_max_alt)
+            for i in range(0, 6):
+                self.converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
+                self.converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
             
-            self.pktnum = struct.unpack("<h", packet[125:127])[0]
-            #print("Packet Number:", self.pktnum)
+            #Parse Integrated Acceleration
+            self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
-            self.badpackets = packet[105]
-            #print("Bad Packets:", self.badpackets)
             if self.logging:
                 data = [
                     time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
@@ -347,11 +313,19 @@ class rocket:
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
-    def servos_set_angle(self, angle):
+    def set_roll_control_servo_angle(self, angle):
         data = bytearray(16)
         data[0] = 0xAA
         struct.pack_into("<f", data, 9, angle)
         data[13] = 0x03
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
+
+    def set_airbrakes_angle(self, angle):
+        data = bytearray(16)
+        data[0] = 0xAA
+        struct.pack_into("<f", data, 9, angle)
+        data[13] = 0x0C # NEEDS CHANGE !!
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
@@ -368,23 +342,30 @@ class rocket:
         Try to open the serial port. Returns (True, None) on success,
         (False, errmsg) on failure.
         """
+        print("[RKT] Trying to connect to port {}".format(port))
         if port is not None:
             self.serial_port = port
         if self.serial_port is None:
+            print("[RKT] No port specified.")
             return False, "No serial port specified"
 
         try:
             self.ser = serial.Serial(self.serial_port, 115200, timeout=1)
+            print("[RKT] Connection Successful")
             return True, None
         except Exception as e:
             self.ser = None
+            print("[RKT] Connection Failed")
             return False, str(e)
 
     def disconnect_serial(self):
         """Close serial port if open."""
+        print("[RKT] Trying to disconnect from port {}".format(self.serial_port))
         try:
             if self.ser is not None and self.ser.is_open:
                 self.ser.close()
             self.ser = None
+            print("[RKT] Disconnection Successful")
         except Exception:
             self.ser = None
+            print("[RKT] Problem; but disconnection Successful")
