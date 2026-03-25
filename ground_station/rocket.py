@@ -25,6 +25,7 @@ class rocket:
 
         self.pyros = [0] * 6
         self.servos = [0] * 4
+        self.servos_deg = [0] * 4
         self.accelerometer = [0, 0, 0] #x, y, z, m/s^2
         self.barometer = 0
         self.barofilteredalt = 0  #m
@@ -159,6 +160,9 @@ class rocket:
 
             for i in range(0, 4):
                 self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
+                func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
+                self.servos_deg[i] = func(self.servos[i])
+                print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
             
             #Parse accelerometer
             self.accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
@@ -429,7 +433,11 @@ class rocket:
 
 
 
+    def microsecToDeg_airbrakes(self, microsec):
+        return (microsec - 1500)/500 * 60
 
+    def microsecToDeg_rollCtrl(self, microsec):
+        return (microsec - 1500)/500 * 50
 
 
 

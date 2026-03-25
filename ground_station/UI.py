@@ -994,9 +994,9 @@ class RocketUI(QWidget):
             if row == 7:
                 try:
                     temp = float(dat[1])
-                    print("[UI] [Power] Measured temperature {}".format(temp))
+                    #print("[UI] [Power] Measured temperature {}".format(temp))
                     err = temp - REASONABLE_TEMP
-                    print("[UI] [Power] Abnormality in temperature {}".format(err))  
+                    #print("[UI] [Power] Abnormality in temperature {}".format(err))  
                     if err < 5:
                         color = Qt.darkGreen
                     elif err < 10:
@@ -1021,7 +1021,7 @@ class RocketUI(QWidget):
             pyros = getattr(self.rocket, "pyros", [None]*8)
             armed = getattr(self.rocket, "armed", [0]*8)
             fired = getattr(self.rocket, "fired", [0]*8)
-            servos = getattr(self.rocket, "servos", [0]*8)
+            servos = getattr(self.rocket, "servos_deg", [0]*4)
             resistances = getattr(self.rocket, "pyro_resistances", [None]*8)
 
             display_rows = list(range(0, 6))
@@ -1411,6 +1411,38 @@ class RocketUI(QWidget):
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # -------------------------
     # UI state helpers
