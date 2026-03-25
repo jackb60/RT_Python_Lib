@@ -57,8 +57,12 @@ class RocketUI(QWidget):
         self.pointer = pointer()
         self.tracking_enabled = False
         self.poll_timer = QTimer()
+        self.time_timer = QTimer()
         self.poll_timer.setInterval(POLL_MS)
+        self.time_timer.setInterval(POLL_MS)
         self.poll_timer.timeout.connect(self.poll_telemetry)
+        self.time_timer.timeout.connect(self.update_time)
+        self.time_timer.start()
         self.polling = False
         self.is_gndgps_frozen = False
         self.frozen_lat = 0
@@ -616,8 +620,10 @@ class RocketUI(QWidget):
 
         self.status_label  = QLabel("Status: Ready")
         self.status_label2 = QLabel("Polling Status: Not Polling")
+        self.status_label3 = QLabel("Current time: ")
         final_layout.addWidget(self.status_label)
         final_layout.addWidget(self.status_label2)
+        final_layout.addWidget(self.status_label3)
 
 
         self.setLayout(final_layout)
@@ -1356,9 +1362,16 @@ class RocketUI(QWidget):
 
 
         now = datetime.now()
-        self.status_label2.setText("Telemetry updated at time {}".format(now.strftime("%Y-%m-%d %H:%M:%S.%f")))
+        seconds = now.second + now.microsecond / 1e6
+        self.status_label2.setText("Telemetry last updated at time {}".format(now.strftime("%Y-%m-%d %H:%M:") + f"{seconds:0.2f}"))
         return True
-  
+    
+
+    def update_time(self):
+        now = datetime.now()
+        seconds = now.second + now.microsecond / 1e6
+        self.status_label3.setText("Current date/time is {}".format(now.strftime("%Y-%m-%d %H:%M:") + f"{seconds:0.2f}"))
+
 
     # -------------------------
     # EMERGENCY command wrappers
@@ -1722,6 +1735,7 @@ class RocketUI(QWidget):
                 )
         self.vtxPower_btn.setEnabled(connected)
         self.safe_group.setEnabled(connected)
+        self.pwrprotecgrp.setEnabled(connected)
 
 
 
