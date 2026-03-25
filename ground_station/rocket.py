@@ -68,6 +68,12 @@ class rocket:
         self.bms_protections_enabled = 0
         self.bms_protection_status = 0
         self.bms_temp = 0 # battery source
+
+
+        self.enabled_status = [1] * 6 # 1 for True, 0 for False
+        # order:   3 3.3 5 7.4 8.4 28
+        # index    0  1  2  3   4  5
+        self.enabled_status = [1,1,1,0,0,0] # testing
     
         self.angleFromVertical = 0 
 
@@ -438,6 +444,22 @@ class rocket:
 
     def microsecToDeg_rollCtrl(self, microsec):
         return (microsec - 1500)/500 * 50
+
+
+    def update_converters(info):
+        # info is of structure
+        # [3v_enabled, 5v_enabled, 7v4_enabled, 8v4_enabled, 28v_enabled]
+
+        should_3v_be_enabled   = info[0]
+        should_5v_be_enabled   = info[1]
+        should_7p4v_be_enabled = info[2]
+        should_8p4v_be_enabled = info[3]
+        should_28v_be_enabled  = info[4]
+
+        # todo send the information to the gnd station telemetry via serial
+
+        
+
 
 
 
