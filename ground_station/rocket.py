@@ -264,7 +264,12 @@ class rocket:
     def set_vtx_power(self,power_level):
         a = power_level,["1 W", "3 W","5 W", "8 W"][power_level]   
         print("[RKT] Received req for new power level {} <=> {}".format(*a))
-        # TODO IMPLEMENT CHANGE VTX POWER
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[12] = power_level
+        data[13] = 0x06
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
         
         
 
@@ -347,7 +352,7 @@ class rocket:
         data = bytearray(16)
         data[0] = 0xAA
         struct.pack_into("<f", data, 9, angle)
-        data[13] = 0x03
+        data[13] = 0x05
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
@@ -355,7 +360,7 @@ class rocket:
         data = bytearray(16)
         data[0] = 0xAA
         struct.pack_into("<f", data, 9, angle)
-        data[13] = 0x0C # NEEDS CHANGE !!
+        data[13] = 0x03
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
@@ -405,32 +410,63 @@ class rocket:
     def EMERG_DEPLOY_PISTON(self):
         print("[RKT] [EMERGENCY] Req deployment of piston...")
 
-        # TODO IMPLEMENT EMERGENCY PISTON DEPLOYMENT
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x10
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
         print("[RKT] [EMERGENCY] Piston Deployment Reqd.")
 
     def EMERG_DEPLOY_BP_WELLS(self):
         print("[RKT] [EMERGENCY] Req deployment of Black Powder Wells...")
 
-        # TODO IMPLEMENT EMERGENCY BP WELLS DEPLOYMENT
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x11
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
         print("[RKT] [EMERGENCY] BP Wells Deployment Reqd.")
 
     def EMERG_DEPLOY_TD(self):
         print("[RKT] [EMERGENCY] Req deployment of Tender Descender...")
 
-        # TODO IMPLEMENT EMERGENCY TENDER DESCENDER
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x12
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
         print("[RKT] [EMERGENCY] TD Deployment Reqd.")
 
     def EMERG_DEPLOY_ALL(self):
         print("[RKT] [EMERGENCY] Req deployment of ALL RECOVERY MEASURES")
 
-        # TODO IMPLEMENT EMERGENCY ALL MEASURES FOR RECOVERY
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[13] = 0x13
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
         print("[RKT] [EMERGENCY] All recovery measures deployment requested.")
 
+    def update_converters(self, converters):
+        data = bytearray(16)
+        data[0] = 0xAA
+        for i in converters:    
+            data[12] |= 0x01 << i
+        data[13] = 0x01
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
+    def bmsprotections(self, enabled):
+        data = bytearray(16)
+        data[0] = 0xAA
+        data[12] = enabled
+        data[13] = 0x01
+        struct.pack_into(">H", data, 14, self.calc_checksum(data))
+        self.ser.write(data)
 
 
     def microsecToDeg_airbrakes(self, microsec):
