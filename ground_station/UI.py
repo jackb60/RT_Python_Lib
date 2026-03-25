@@ -57,6 +57,10 @@ class RocketUI(QWidget):
         self.poll_timer.setInterval(POLL_MS)
         self.poll_timer.timeout.connect(self.poll_telemetry)
         self.polling = False
+        self.is_gndgps_frozen = False
+        self.frozen_lat = 0
+        self.frozen_lon = 0
+        self.frozen_alt = 0
 
         self._build_ui()
         self.refresh_ports()
@@ -234,28 +238,51 @@ class RocketUI(QWidget):
 
 
         # Safe command buttons
-        safe_group = QGroupBox("Safe Commands")
-        s_layout = QHBoxLayout()
-        self.zero_pitchYawRoll_btn = QPushButton("Zero P/Y/Roll")
-        self.zero_pitchYawRoll_btn.clicked.connect(self.zero_pitchYawRoll)
-        s_layout.addWidget(self.zero_pitchYawRoll_btn)
-        self.zero_alt_btn = QPushButton("Zero Alt")
-        self.zero_alt_btn.clicked.connect(self.zero_alt)
-        s_layout.addWidget(self.zero_alt_btn)
-        self.zero_velo_btn = QPushButton("Zero Velo")
-        self.zero_velo_btn.clicked.connect(self.zero_velo)
-        s_layout.addWidget(self.zero_velo_btn)
-        self.zero_servos_btn = QPushButton("Zero Servos")
-        self.zero_servos_btn.clicked.connect(self.zero_servos)
-        s_layout.addWidget(self.zero_servos_btn)
+        self.safe_group = QGroupBox("Safe Commands")
+            
+        hll = QHBoxLayout()
+        s_layoutA = QHBoxLayout()
+        s_layoutB = QHBoxLayout()
+        vll = QVBoxLayout()
+        vll.addLayout(s_layoutA)
+        vll.addLayout(s_layoutB)
+
         self.advance_state_btn = QPushButton("Advance State")
         self.advance_state_btn.clicked.connect(self.advance_state)
-        s_layout.addWidget(self.advance_state_btn)
+        s_layoutA.addWidget(self.advance_state_btn)
+
+        self.zero_pitchYawRoll_btn = QPushButton("Zero P/Y/Roll")
+        self.zero_pitchYawRoll_btn.clicked.connect(self.zero_pitchYawRoll)
+        s_layoutA.addWidget(self.zero_pitchYawRoll_btn)
+        self.zero_alt_btn = QPushButton("Zero Alt")
+        self.zero_alt_btn.clicked.connect(self.zero_alt)
+        s_layoutA.addWidget(self.zero_alt_btn)
+        self.zero_velo_btn = QPushButton("Zero Velo")
+        self.zero_velo_btn.clicked.connect(self.zero_velo)
+        s_layoutB.addWidget(self.zero_velo_btn)
+        self.zero_servos_btn = QPushButton("Zero Servos")
+        self.zero_servos_btn.clicked.connect(self.zero_servos)
+        s_layoutB.addWidget(self.zero_servos_btn)
         self.pd_activate_btn = QPushButton("PD Activate")
         self.pd_activate_btn.clicked.connect(self.pd_activate)
-        s_layout.addWidget(self.pd_activate_btn)
-        safe_group.setLayout(s_layout)
-        vert.addWidget(safe_group)
+        s_layoutB.addWidget(self.pd_activate_btn)
+    
+        hll.addLayout(vll)
+        
+        hl2 = QHBoxLayout()
+        l = QLabel("                    VTX Power Setting: ")
+        hl2.addWidget(l)
+        self.vtxPower_btn = QComboBox()
+        self.vtxPower_btn.addItem("1 W")
+        self.vtxPower_btn.addItem("3 W")
+        self.vtxPower_btn.addItem("5 W")
+        self.vtxPower_btn.addItem("8 W")
+        self.vtxPower_btn.currentIndexChanged.connect(self.update_vtx_power)
+        hl2.addWidget(self.vtxPower_btn)
+        hll.addLayout(hl2)
+
+        self.safe_group.setLayout(hll)
+        vert.addWidget(self.safe_group)
 
         # --- Servo control (safe) ---
         self.servo_group = QGroupBox("Servo Control (safe)")
@@ -327,7 +354,9 @@ class RocketUI(QWidget):
 
         # --- Pointer Control ---
         
-        
+        a_vl = QVBoxLayout()
+
+
         self.pointer_group = QGroupBox("Pointer Control")
         grid = QGridLayout()
 
@@ -355,7 +384,59 @@ class RocketUI(QWidget):
         grid.addWidget(self.track_toggle, 3, 0, 1, 3)
 
         self.pointer_group.setLayout(grid)
-        row.addWidget(self.pointer_group)
+        a_vl.addWidget(self.pointer_group)
+
+
+
+        ## lat lon fix of antenna pointer, with button to fix
+
+        self.gndgpsbox = QGroupBox("Ground Station GPS")
+
+        vl = QVBoxLayout()
+
+        gridL = QGridLayout()
+
+        latL = QLabel("Lat: ")
+        lonL = QLabel("Lon: ")
+        altL = QLabel("Alt (m): ")
+        fixL = QLabel("Fix: ")
+
+        self.latValL = QLabel(str("-"))
+        self.lonValL = QLabel(str("-"))
+        self.altValL = QLabel(str("-"))
+        self.fixValL = QLabel(str("-"))
+
+        gridL.addWidget(latL,0,0)
+        gridL.addWidget(self.latValL,0,1)
+        gridL.addWidget(lonL,1,0)
+        gridL.addWidget(self.lonValL,1,1)
+        gridL.addWidget(altL,2,0)
+        gridL.addWidget(self.altValL,2,1)
+        gridL.addWidget(fixL,3,0)
+        gridL.addWidget(self.fixValL,3,1)
+        vl.addLayout(gridL)
+
+
+        self.hold_gnd_gps_fixed_btn = QPushButton("Hold")
+        self.hold_gnd_gps_fixed_btn.setCheckable(True)
+        self.hold_gnd_gps_fixed_btn.clicked.connect(self.hold_gnd_gps_fixed)
+        vl.addWidget(self.hold_gnd_gps_fixed_btn)
+        
+        self.gndgpsbox.setLayout(vl)
+
+
+
+
+        a_vl.addWidget(self.gndgpsbox)
+
+
+
+
+
+
+
+
+        row.addLayout(a_vl)
         left_layout.addLayout(row)
 
         
@@ -368,7 +449,7 @@ class RocketUI(QWidget):
             # --- Right side panel ---
         right_layout = QVBoxLayout()
 
-        self.emerg_group = QGroupBox("EMERGENCY COMMANDS")
+        self.emerg_group = QGroupBox("EMERGENCY COMMANDS: DANGER ZONE")
         self.emerg_group.setStyleSheet("""
             QGroupBox {
                 background-color: rgba(171,0,0,0.1);
@@ -464,8 +545,49 @@ class RocketUI(QWidget):
 
         right_layout.addWidget(servo_group)
 
+
+
+
+        ## Power Protections Status Table
+        self.pwrprotecgrp = QGroupBox("Power Protection Status")
+        vl = QVBoxLayout()
+        self.power_protec_table = QTableWidget(2, 6)
+        self.power_protec_table.setHorizontalHeaderLabels(["SCD", "OCD2", "OCD1", "OCC","COV","CUV","RSVD_0","RSVD_0"])
+        self.power_protec_table.setVerticalHeaderLabels(["Enabled","Triggered"])
+        self.power_protec_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.power_protec_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        self.pwrprotecgrp.setFixedHeight(120)
+        vl.addWidget(self.power_protec_table)
+        self.pwrprotecgrp.setLayout(vl)
+        right_layout.addWidget(self.pwrprotecgrp)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         # add the whole right panel
         main_layout.addLayout(right_layout, stretch=1)
+
+
+
+
+
+
+
         # --- Bottom: status label ---
         final_layout = QVBoxLayout()
         final_layout.addLayout(main_layout)
@@ -553,10 +675,10 @@ class RocketUI(QWidget):
         except Exception as e:
             ok, err = False, str(e)
         if ok:
-            self.status_label.setText(f"Connected to {port}")
-            QMessageBox.information(self, "Connected", f"Connected to {port} (115200 baud)")
+            self.status_label.setText(f"Connected to Ground Station on {port}")
+            QMessageBox.information(self, "Connected to Ground Station", f"Connected to Ground Station on {port} (115200 baud)")
         else:
-            self.status_label.setText("Connection failed")
+            self.status_label.setText("Connection to Ground Station failed")
             QMessageBox.critical(self, "Connect Failed", f"Could not open {port}:\n{err}")
         self.update_ui_state()
 
@@ -573,7 +695,7 @@ class RocketUI(QWidget):
                     except Exception:
                         pass
                     self.rocket.ser = None
-            self.status_label.setText("Disconnected")
+            self.status_label.setText("Disconnected from Ground Station")
         except Exception as e:
             QMessageBox.warning(self, "Disconnect Error", str(e))
         self.update_ui_state()
@@ -590,11 +712,11 @@ class RocketUI(QWidget):
         except Exception as e:
             ok, err = False, str(e)
         if ok:
-            self.status_label.setText(f"Connected to {port}")
-            QMessageBox.information(self, "Connected", f"Connected to {port} (115200 baud)")
+            self.status_label.setText(f"Connected to Antenna Pointer on {port}")
+            QMessageBox.information(self, "Connected", f"Connected to Antenna Pointer on {port} (115200 baud)")
         else:
-            self.status_label.setText("Connection failed")
-            QMessageBox.critical(self, "Connect Failed", f"Could not open {port}:\n{err}")
+            self.status_label.setText("Connection failed to Antenna Pointer")
+            QMessageBox.critical(self, "Connect Failed", f"Could not open comms to Antenna Pointer on {port}:\n{err}")
         self.update_ui_state()
 
     def disconnect_serial_antenna(self):
@@ -608,9 +730,9 @@ class RocketUI(QWidget):
                     except Exception:
                         pass
                     self.pointer.ser = None
-            self.status_label.setText("Disconnected")
+            self.status_label.setText("Disconnected from Antenna Pointer")
         except Exception as e:
-            QMessageBox.warning(self, "Disconnect Error", str(e))
+            QMessageBox.warning(self, "Disconnect Error from Antenna Pointer", str(e))
         self.update_ui_state()
 
 
@@ -971,6 +1093,55 @@ class RocketUI(QWidget):
             item.setTextAlignment(Qt.AlignCenter)
             self.servo_table.setItem(i, 1, item)
 
+
+
+
+
+
+        if not self.is_gndgps_frozen:
+            self.latValL.setText(str(getattr(self.rocket,"gnd_lat","-")))
+            self.lonValL.setText(str(getattr(self.rocket,"gnd_lon","-")))
+            self.altValL.setText(str(getattr(self.rocket,"gnd_alt","-")))
+            self.fixValL.setText(str(getattr(self.rocket,"gnd_fix","-")))
+            if self.fixValL.text() == "False":
+                self.fixValL.setStyleSheet("color: rgba(250, 0, 0,1)")
+            elif self.fixValL.text() == "True":
+                self.fixValL.setStyleSheet("color: rgba(0, 152, 199,1)")
+
+
+        # power protection
+
+        protec_enbl = getattr(self.rocket, "bms_protections_enabled", 0x00) #0x08
+        protec_trig = getattr(self.rocket, "bms_protection_status", 0x00) #0x04
+        enbl_vals = [(protec_enbl >> i) & 1 for i in range(8)]
+        trig_vals = [(protec_trig >> i) & 1 for i in range(8)]
+        arrs = np.array([enbl_vals,trig_vals])
+        # enbl
+        for i in range(8):
+            val = int(arrs[0,i])
+            color = Qt.darkGreen if val == 1 else Qt.red
+            item = QTableWidgetItem(str(val))
+            item.setTextAlignment(Qt.AlignCenter)
+            item.setBackground(QColor(color))
+            self.power_protec_table.setItem(0,7-i,item)
+        for i in range(8):
+            val = int(arrs[1,i])
+            color = Qt.darkGreen if val == 0 else Qt.red
+            item = QTableWidgetItem(str(val))
+            item.setTextAlignment(Qt.AlignCenter)
+            item.setBackground(QColor(color))
+            self.power_protec_table.setItem(1,7-i,item)
+
+
+
+
+
+
+
+
+
+
+
         self.status_label.setText("Telemetry updated")
         return True
   
@@ -1052,6 +1223,64 @@ class RocketUI(QWidget):
     # -------------------------
     # Safe command wrappers
     # -------------------------
+    def hold_gnd_gps_fixed(self):
+        if not self.is_gndgps_frozen:
+            print("[UI] [AntennaPtr] Req holding the Gnd Station GPS coords fixed.")
+            if not getattr(self.rocket,"gnd_fix",False):
+                if (getattr(self.rocket,"gnd_lat",0) == 0) & (getattr(self.rocket,"gnd_lon",0) == 0):
+                    print("[UI] [AntennaPtr] WARNING Attempting to hold to nonexistent coordinates. Not saving....")
+                    self.hold_gnd_gps_fixed_btn.setChecked(False)
+                    return
+            else:
+                print("[UI] [AntennaPtr] INFO Attempting to hold without a fix. Continuing....")
+            try:
+                
+                tmp = getattr(self.rocket, 'gnd_lat', "-")
+                if tmp != "-":
+                    self.frozen_lat = tmp
+                else:
+                    raise Exception()
+                
+                tmp = getattr(self.rocket, 'gnd_lon', "-")
+                if tmp != "-":
+                    self.frozen_lon = tmp
+                else:
+                    raise Exception()
+
+                tmp = getattr(self.rocket, 'gnd_alt', "-")
+                if tmp != "-":
+                    self.frozen_alt = tmp
+                else:
+                    raise Exception()
+
+                self.is_gndgps_frozen = True
+                print("[UI] [AntennaPtr] Successfully saved new fix; lat {} lon {} alt {}".format(self.frozen_lat,self.frozen_lon,self.frozen_alt))
+                self.hold_gnd_gps_fixed_btn.setText("Holding")
+            except Exception as e:
+                print("[UI] [AntennaPtr] Failed to obtain Gnd Gps Fix !")
+                print(e)
+        else:
+            print("[UI] [AntennaPtr] Unfreezing Gnd Station GPS coords.")
+            self.is_gndgps_frozen = False
+            self.hold_gnd_gps_fixed_btn.setText("Hold")
+            self.frozen_lat = 0
+            self.frozen_lon = 0
+            self.frozen_alt = 0
+
+
+    def update_vtx_power(self, index):
+        print("[UI] [VTX] New Power Req")
+        a = index,["1 W", "3 W","5 W", "8 W"][index]   
+        if hasattr(self.rocket, "set_vtx_power"): 
+            self.rocket.set_vtx_power(index)
+            self.status_label.setText("new vtx power sent (index {} value {})".format(*a))
+            print("Sent new vtx power {} <=> {}".format(*a))
+            print("[UI] [VTX] Success !")
+        else:
+            self.status_label.setText("*Failed* to send vtx power (index {} value {})".format(*a))
+
+
+
     def zero_pitchYawRoll(self):
         if hasattr(self.rocket, "zero_pitchYawRoll"): self.rocket.zero_pitchYawRoll()
         self.status_label.setText("zero_pitchYawRoll sent")
@@ -1224,6 +1453,8 @@ class RocketUI(QWidget):
         self.connect_btn_antenna.setEnabled(not connected_antenna)
         self.disconnect_btn_antenna.setEnabled(connected_antenna)
         self.pointer_group.setEnabled(connected_antenna)
+        self.gndgpsbox.setEnabled(connected)
+        self.hold_gnd_gps_fixed_btn.setEnabled(connected_antenna & connected)
         self.poll_btn.setEnabled(connected)
         if not connected:
             self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")
@@ -1238,11 +1469,13 @@ class RocketUI(QWidget):
         self.pyro_arm_btn.setEnabled(connected)
         self.pyro_fire_btn.setEnabled(connected)
         self.emerg_group.setEnabled(connected)
-        for btn in [self.EMERG_all_btn, self.EMERG_td_btn, self.EMERG_bp_wells_btn, self.EMERG_piston_btn]:
+        for btn in [self.EMERG_all_btn, self.EMERG_td_btn, self.EMERG_bp_wells_btn, self.EMERG_piston_btn, self.pyro_fire_btn, self.pyro_arm_btn]:
             btn.setStyleSheet(
                 "color: rgba(250, 0, 0,0.5); font-weight:bold;" if not connected else
                 "color: rgba(250, 0, 0,1); font-weight:bold;"
                 )
+        self.vtxPower_btn.setEnabled(connected)
+        self.safe_group.setEnabled(connected)
 
 
 
@@ -1283,7 +1516,7 @@ def main():
         print("Set font failed :(")
 
     win = RocketUI()
-    win.resize(900, 900)
+    win.resize(1600, 1000)
     win.show()
     sys.exit(app.exec_())
 

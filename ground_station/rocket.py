@@ -67,10 +67,14 @@ class rocket:
         self.bms_protections_enabled = 0
         self.bms_protection_status = 0
         self.bms_temp = 0 # battery source
-        
-
-
+    
         self.angleFromVertical = 0 
+
+        self.gnd_lat = 0
+        self.gnd_lon = 0
+        self.gnd_fix = False
+        self.gnd_alt = 0
+        self.gnd_numsat = 0
         
     
     def log_data_start(self):
@@ -251,6 +255,14 @@ class rocket:
                 self.file.flush()
                 os.fsync(self.file.fileno())
             return True
+
+    
+    def set_vtx_power(self,power_level):
+        a = power_level,["1 W", "3 W","5 W", "8 W"][power_level]   
+        print("[RKT] Received req for new power level {} <=> {}".format(*a))
+        # TODO IMPLEMENT CHANGE VTX POWER
+        
+        
 
     def zero_pitchYawRoll(self):
         data = bytearray(16)
