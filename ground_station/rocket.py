@@ -482,19 +482,19 @@ class rocket:
         return (microsec - 1500)/500 * 50
 
 
-    def update_converters(info):
+    def update_converters(self,info):
         # info is of structure
-        # [3v_enabled, 5v_enabled, 7v4_enabled, 8v4_enabled, 28v_enabled]
-
-        should_3v_be_enabled   = info[0]
-        should_5v_be_enabled   = info[1]
-        should_7p4v_be_enabled = info[2]
-        should_8p4v_be_enabled = info[3]
-        should_28v_be_enabled  = info[4]
+        # [3v_enabled, 3p3v_enabled, 5v_enabled, 7v4_enabled, 8v4_enabled, 28v_enabled]
+        should_3v_be_enabled   = int(info[0])
+        should_3p3v_be_enabled = int(info[1])
+        should_5v_be_enabled   = int(info[2])
+        should_7p4v_be_enabled = int(info[3])
+        should_8p4v_be_enabled = int(info[4])
+        should_28v_be_enabled  = int(info[5])
 
         # todo send the information to the gnd station telemetry via serial
 
-        
+
 
 
 
