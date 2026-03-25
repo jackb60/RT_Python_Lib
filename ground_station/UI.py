@@ -1301,11 +1301,11 @@ class RocketUI(QWidget):
             color = "red"
             if reqChk.isChecked() == readChk.isChecked():
                 if reqChk.isChecked():
-                    color = "darkGreen"
+                    color = "lightGreen"
                 else:
-                    color = "blue"
+                    color = "#3C78D8"
             else:
-                color = "red"
+                color = "#AB0000"
             
             [cell.setStyleSheet("background-color: {};".format(color)) for cell in [readCell,reqCell]]
 
