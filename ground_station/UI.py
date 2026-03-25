@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QAction
 )
 from PyQt5.QtGui import QFont, QKeySequence
-
+import time 
 from PyQt5.QtCore import QTimer, Qt
 
 from PyQt5.QtGui import QColor
@@ -223,8 +223,8 @@ class RocketUI(QWidget):
         separator.setFrameStyle(QFrame.VLine | QFrame.Sunken)
         row.addWidget(separator)
 
-        self.power_table = QTableWidget(0, 4)
-        self.power_table.setHorizontalHeaderLabels(["Name","Enabled", "Voltage", "Current"])
+        self.power_table = QTableWidget(0, 5)
+        self.power_table.setHorizontalHeaderLabels(["Name","Req. Stat.", "Enabled", "Voltage", "Current"])
         self.power_table.verticalHeader().setVisible(False)
         self.power_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.power_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -617,31 +617,60 @@ class RocketUI(QWidget):
 
     def toggle_voltage_3V(self):
         print("[UI] NEW REQ STATE OF 3V: {}".format("ON" if self.chkbx_3V.isChecked() else "OFF"))
-        self.updateMasterToggle()
+        self.updateMasterToggles()
 
     def toggle_voltage_5V(self):
         print("[UI] NEW REQ STATE OF 5V: {}".format("ON" if self.chkbx_5V.isChecked() else "OFF"))
-        self.updateMasterToggle()
+        self.updateMasterToggles()
 
     def toggle_voltage_7p4V(self):
         print("[UI] NEW REQ STATE OF 7.4V: {}".format("ON" if self.chkbx_7p4V.isChecked() else "OFF"))
-        self.updateMasterToggle()
+        self.updateMasterToggles()
 
     def toggle_voltage_8p4V(self):
         print("[UI] NEW REQ STATE OF 8.4V: {}".format("ON" if self.chkbx_8p4V.isChecked() else "OFF"))
-        self.updateMasterToggle()
+        self.updateMasterToggles()
 
     def toggle_voltage_28V(self):
         print("[UI] NEW REQ STATE OF 28V: {}".format("ON" if self.chkbx_28V.isChecked() else "OFF"))
-        self.updateMasterToggle()
+        self.updateMasterToggles()
 
-    def updateMasterToggle(self):
+    def record_toggle_master(self):
+        print("[UI] CHANGED STATE OF MASTER: NOW {} at time {}".format("ON" if self.chkbx_master_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_3V(self):
+        print("[UI] CHANGED STATE OF 3V: NOW {} at time {}".format("ON" if self.chkbx_3V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_3p3V(self):
+        print("[UI] CHANGED STATE OF 3.3V: NOW {} at time {}".format("ON" if self.chkbx_3p3V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_5V(self):
+        print("[UI] CHANGED STATE OF 5V: NOW {} at time {}".format("ON" if self.chkbx_5V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_7p4V(self):
+        print("[UI] CHANGED STATE OF 7.4V: NOW {} at time {}".format("ON" if self.chkbx_7p4V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_8p4V(self):
+        print("[UI] CHANGED STATE OF 8.4V: NOW {} at time {}".format("ON" if self.chkbx_8p4V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def record_toggle_28V(self):
+        print("[UI] CHANGED STATE OF 28V: NOW {} at time {}".format("ON" if self.chkbx_28V_readonly.isChecked() else "OFF", int(time.time())))
+
+    def updateMasterToggles(self):
         is3Von   = self.chkbx_3V.isChecked()
         is5Von   = self.chkbx_5V.isChecked()
         is7p4Von = self.chkbx_7p4V.isChecked()
         is8p4Von = self.chkbx_8p4V.isChecked()
         is28Von  = self.chkbx_28V.isChecked()
         self.master_power_checkbox.setCheckState(Qt.PartiallyChecked if not(is3Von and is5Von and is7p4Von and is8p4Von and is28Von) else Qt.Checked)
+        
+        is3Von   = self.chkbx_3V_readonly.isChecked()
+        is3p3Von   = self.chkbx_3p3V_readonly.isChecked()
+        is5Von   = self.chkbx_5V_readonly.isChecked()
+        is7p4Von = self.chkbx_7p4V_readonly.isChecked()
+        is8p4Von = self.chkbx_8p4V_readonly.isChecked()
+        is28Von  = self.chkbx_28V_readonly.isChecked()
+        self.chkbx_master_readonly.setCheckState(Qt.PartiallyChecked if not(is3Von and is3p3Von and is5Von and is7p4Von and is8p4Von and is28Von) else Qt.Checked)
     
     # -------------------------
     # Port management
@@ -957,7 +986,7 @@ class RocketUI(QWidget):
                 l.addWidget(checkbox)
                 w.setLayout(l)
                 self.power_table.setCellWidget(row, 1, w)
-            elif self.power_table.cellWidget(row, 1) is None and row in specialRows:
+            elif self.power_table.cellWidget(row, 1) is None and row in specialRows and row != 7:
                 checkbox = QCheckBox()
                 if row == 0:
                     self.master_power_checkbox = checkbox
@@ -969,6 +998,47 @@ class RocketUI(QWidget):
                 l.addWidget(checkbox)
                 w.setLayout(l)
                 self.power_table.setCellWidget(row, 1, w)
+
+            if self.power_table.cellWidget(row, 2) is None and row != 7:
+                checkbox = QCheckBox()
+                func = self.record_toggle_3V
+                if row == 0:
+                    func = self.record_toggle_master
+                    self.chkbx_master_readonly = checkbox
+                if row == 1:
+                    func = self.record_toggle_3V
+                    self.chkbx_3V_readonly = checkbox
+                if row == 1:
+                    func = self.record_toggle_3p3V
+                    self.chkbx_3p3V_readonly = checkbox
+                if row == 3:
+                    func = self.record_toggle_5V
+                    self.chkbx_5V_readonly = checkbox
+                elif row == 4:
+                    func = self.record_toggle_7p4V
+                    self.chkbx_7p4V_readonly = checkbox
+                elif row == 5:
+                    func = self.record_toggle_8p4V
+                    self.chkbx_8p4V_readonly = checkbox
+                elif row == 6:
+                    func = self.record_toggle_28V
+                    self.chkbx_28V_readonly = checkbox
+                w = QWidget()
+                l = QHBoxLayout()
+                l.setAlignment(Qt.AlignCenter)
+                checkbox.setChecked(True)
+                checkbox.setEnabled(False)
+                checkbox.stateChanged.connect(func)
+                l.addWidget(checkbox)
+                w.setLayout(l)
+                self.power_table.setCellWidget(row, 2, w)
+            if row == 7:
+                item = QTableWidgetItem("-")
+                item.setTextAlignment(Qt.AlignCenter)
+                self.power_table.setItem(7,1,item)
+                item = QTableWidgetItem("-")
+                item.setTextAlignment(Qt.AlignCenter)
+                self.power_table.setItem(7,2,item)
             correctVoltage = self.getVoltageByRow(row)
             color = Qt.black
             if correctVoltage != -1 and correctVoltage != 100: # two error codes: -1 is row 0 and 100 is unknown row
@@ -1013,8 +1083,8 @@ class RocketUI(QWidget):
             item2 = QTableWidgetItem(str(dat[2])) # current
             item.setTextAlignment(Qt.AlignCenter)
             item2.setTextAlignment(Qt.AlignCenter)
-            self.power_table.setItem(row, 2, item)
-            self.power_table.setItem(row, 3, item2)
+            self.power_table.setItem(row, 3, item)
+            self.power_table.setItem(row, 4, item2)
 
         # --- Pyros table ---
         try:
@@ -1134,6 +1204,14 @@ class RocketUI(QWidget):
 
 
 
+        statuses = getattr(self.rocket,"enabled_status",[1]*5)
+        for i,chkbx in enumerate(
+                [self.chkbx_3V_readonly,self.chkbx_5V_readonly,self.chkbx_7p4V_readonly,self.chkbx_8p4V_readonly,self.chkbx_28V_readonly]
+                ):
+            self.switched_from_polled_telemetry = True
+            chkbx.setChecked(statuses[i])
+
+        self.updateMasterToggles()
 
 
 
