@@ -11,7 +11,7 @@ class state(Enum):
     PRE_FLIGHT = 1
     FLIGHT = 2
     APOGEE = 3
-    DISREEF = 4
+    MAIN = 4
     END = 5
 
 class rocket:
@@ -273,7 +273,7 @@ class rocket:
         data = bytearray(16)
         data[0] = 0xAA
         data[12] = power_level
-        data[13] = 0x06
+        data[13] = 0x14
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
         
@@ -462,7 +462,7 @@ class rocket:
         data[0] = 0xAA
         for i in converters:    
             data[12] |= 0x01 << i
-        data[13] = 0x01
+        data[13] = 0x15
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
@@ -470,7 +470,7 @@ class rocket:
         data = bytearray(16)
         data[0] = 0xAA
         data[12] = enabled
-        data[13] = 0x01
+        data[13] = 0x16
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 
