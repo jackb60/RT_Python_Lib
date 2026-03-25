@@ -25,10 +25,12 @@ import time
 from PyQt5.QtCore import QTimer, Qt
 
 from PyQt5.QtGui import QColor
-
+import sys
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from datetime import datetime
+
 
 from pointer import pointer
 import numpy as np
@@ -40,8 +42,9 @@ except Exception as e:
 
 POLL_MS = 1
 DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
-IS_MACOS = True
+IS_MACOS = (sys.platform == "darwin")
 REASONABLE_TEMP = 30
+print("[UI] [startup] Detected System: {}".format("macOS" if IS_MACOS else "Win/Linux"))
 
 
 class RocketUI(QWidget):
@@ -480,6 +483,7 @@ class RocketUI(QWidget):
 
         self.emerg_group.setLayout(vl)
         right_layout.addWidget(self.emerg_group)
+        #self.emerg_group.setFixedHeight(120)
 
 
 
@@ -492,6 +496,7 @@ class RocketUI(QWidget):
         # Pyro table
         # --------------------
         pyro_group = QGroupBox("Pyros")
+        #pyro_group.setFixedHeight(700)
 
         p_layout = QVBoxLayout()
 
@@ -538,6 +543,7 @@ class RocketUI(QWidget):
         self.servo_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.servo_table.verticalHeader().setVisible(False)
         self.servo_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        #servo_group.setFixedHeight(400)
 
         servo_layout.addWidget(self.servo_table)
 
@@ -551,13 +557,27 @@ class RocketUI(QWidget):
         ## Power Protections Status Table
         self.pwrprotecgrp = QGroupBox("Power Protection Status")
         vl = QVBoxLayout()
+
+        rll = QHBoxLayout()
+        rll.setContentsMargins(0, 0, 0, 0)
+
+        label = QLabel("BMS Protections Enabled: ")
+        self.bms_protec_checkbox = QCheckBox()
+        self.bms_protec_checkbox.setChecked(True)
+        self.bms_protec_checkbox.stateChanged.connect(self.toggle_bms_protec)
+
+        rll.addWidget(label)
+        rll.addWidget(self.bms_protec_checkbox)
+        rll.addStretch()
+        vl.addLayout(rll)
+
         self.power_protec_table = QTableWidget(2, 6)
         self.power_protec_table.setHorizontalHeaderLabels(["SCD", "OCD2", "OCD1", "OCC","COV","CUV","RSVD_0","RSVD_0"])
         self.power_protec_table.setVerticalHeaderLabels(["Enabled","Triggered"])
         self.power_protec_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.power_protec_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        self.pwrprotecgrp.setFixedHeight(120)
+        self.pwrprotecgrp.setFixedHeight(150 if IS_MACOS else 350)
         vl.addWidget(self.power_protec_table)
         self.pwrprotecgrp.setLayout(vl)
         right_layout.addWidget(self.pwrprotecgrp)
@@ -591,8 +611,14 @@ class RocketUI(QWidget):
         # --- Bottom: status label ---
         final_layout = QVBoxLayout()
         final_layout.addLayout(main_layout)
-        self.status_label = QLabel("Status: Ready")
+
+
+
+        self.status_label  = QLabel("Status: Ready")
+        self.status_label2 = QLabel("Polling Status: Not Polling")
         final_layout.addWidget(self.status_label)
+        final_layout.addWidget(self.status_label2)
+
 
         self.setLayout(final_layout)
 
@@ -662,6 +688,18 @@ class RocketUI(QWidget):
         print("[UI] CHANGED STATE OF 28V: NOW {} at time {}".format("ON" if self.chkbx_28V_readonly.isChecked() else "OFF", int(time.time())))
 
     
+    def toggle_bms_protec(self):
+        req_status = self.bms_protec_checkbox.isChecked()
+
+        if hasattr(self.rocket,"bmsprotections"):
+            self.rocket.bmsprotections(req_status)
+            self.status_label.setText("Sent BMS Status: {}".format("ON" if req_status else "OFF"))
+            print("[UI] [PWR] Sent new BMS Protections Status: {}".format("ON" if req_status else "OFF"))
+        else:
+            print("[UI] [PWR] ERROR Failed to send BMS protections: uninitialized in rocket.py")
+
+
+
     def sendPowerInfoToRocket(self):
         req_is3Von   = self.chkbx_3V.isChecked()
         req_is3p3Von = True
@@ -1224,9 +1262,9 @@ class RocketUI(QWidget):
             self.altValL.setText(str(getattr(self.rocket,"gnd_alt","-")))
             self.fixValL.setText(str(getattr(self.rocket,"gnd_fix","-")))
             if self.fixValL.text() == "False":
-                self.fixValL.setStyleSheet("color: rgba(250, 0, 0,1)")
+                self.fixValL.setStyleSheet("color: rgba(250, 0, 0,1); font-weight: bold;")
             elif self.fixValL.text() == "True":
-                self.fixValL.setStyleSheet("color: rgba(0, 152, 199,1)")
+                self.fixValL.setStyleSheet("color: rgba(0, 152, 199,1); font-weight: bold;")
 
 
         # power protection
@@ -1317,9 +1355,8 @@ class RocketUI(QWidget):
 
 
 
-
-
-        self.status_label.setText("Telemetry updated")
+        now = datetime.now()
+        self.status_label2.setText("Telemetry updated at time {}".format(now.strftime("%Y-%m-%d %H:%M:%S.%f")))
         return True
   
 
@@ -1712,12 +1749,14 @@ class RocketUI(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    font = QFont()
+    font.setPointSize(10)
+    app.setFont(font)
     try:
-        app.setFont(QFont("Lucida Grande", 12)) # Mac
-        IS_MACOS = True
+        app.setFont(QFont("Lucida Grande", 12 if IS_MACOS else 10)) # Mac
     except Exception as e:
         try:
-            app.setFont(QFont("Segoe UI", 12)) # Windows
+            app.setFont(QFont("Segoe UI", 10)) # Windows
         except Exception as e:
             print(e)
             print("Set font failed :(")
@@ -1725,8 +1764,9 @@ def main():
         print("Set font failed :(")
 
     win = RocketUI()
+
     win.resize(1600, 1000)
-    win.show()
+    win.showMaximized()
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
