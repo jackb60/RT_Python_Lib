@@ -81,7 +81,6 @@ class rocket:
         self.gnd_lon = 0
         self.gnd_fix = False
         self.gnd_alt = 0
-        self.gnd_numsat = 0
         
     
     def log_data_start(self):
@@ -120,9 +119,13 @@ class rocket:
             while self.ser.read(1) != bytes([0xAB]):
                 pass
             packet = self.ser.read(128)
-            self.rssi = struct.unpack("<b", self.ser.read(1)[0]) - 99
-            #to-do: parse ground station gps coords
-
+            gnd_info = self.ser.read(8)
+            self.rssi = struct.unpack("<b", gnd_info[0:1])[0] - 99
+            self.gnd_fix = gnd_info[1]
+            self.gnd_lat = struct.unpack("<l", gnd_info[2:4])[0] * 1e-7
+            self.gnd_lon = struct.unpack("<l", gnd_info[4:6])[0] * 1e-7
+            self.gnd_alt = struct.unpack("<l", gnd_info[6:8])[0] / 1000
+            
             #Verify checksum
             chksum = 0
             for i in range(0, 127):
