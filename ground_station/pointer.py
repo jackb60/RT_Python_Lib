@@ -86,7 +86,7 @@ class pointer:
         self.has_received_atLeastOne_pointer_gps_update = True
         self.gps_lat = lat
         self.gps_lon = lon
-        self.gps_alt = alt
+        self.gps_alt = 0 #FOR TEST LAUNCH
         self.gps_update_time = time.time()
         print("[PTR] Successfully updated GPS: ({} N,{} E,{} m)".format(lat,lon,alt))
 
