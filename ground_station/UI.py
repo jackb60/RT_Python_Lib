@@ -124,63 +124,7 @@ class RocketUI(QWidget):
         main_layout = QHBoxLayout()
         main_layout.setMenuBar(self.menubar)
 
-        #refresh_ports
-        actionsmenu = self.menubar.addMenu("Actions")
-        self.refreshaction = QAction("Refresh Ports", self)
-        self.refreshaction.triggered.connect(self.refresh_ports_btn.animateClick)
-        self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
-        actionsmenu.addAction(self.refreshaction)
-
-        self.toggleConnectGND = QAction("Connect Ground Station", self)
-        self.toggleConnectGND.triggered.connect(self.connect_btn.animateClick)
-        self.toggleConnectGND.setShortcut(QKeySequence("Ctrl+Alt+C"))
-        actionsmenu.addAction(self.toggleConnectGND)
-
-        self.toggleConnectAntenna = QAction("Connect Antenna Pointer", self)
-        self.toggleConnectAntenna.triggered.connect(self.connect_btn_antenna.animateClick)
-        self.toggleConnectAntenna.setShortcut(QKeySequence("Shift+Ctrl+Alt+C"))
-        actionsmenu.addAction(self.toggleConnectAntenna)
-
-        self.togglePollingAction = QAction("Start Polling", self)
-        self.togglePollingAction.triggered.connect(self.poll_btn.animateClick)
-        self.togglePollingAction.setShortcut(QKeySequence("Ctrl+Return"))
-        self.togglePollingAction.setEnabled(False)
-        actionsmenu.addAction(self.togglePollingAction)
-
-        self.toggleLoggingAction = QAction("Start Logging", self)
-        self.toggleLoggingAction.triggered.connect(self.log_btn.animateClick)
-        self.toggleLoggingAction.setShortcut(QKeySequence("Ctrl+L"))
-        self.toggleLoggingAction.setEnabled(False)
-        actionsmenu.addAction(self.toggleLoggingAction)
-
-
-
-
-        pointermenu = self.menubar.addMenu("Antenna Pointer")
-
-        self.pointerupaction = QAction("Pointer Up", self)
-        self.pointerupaction.triggered.connect(self.btn_up.animateClick)
-        self.pointerupaction.setShortcut(QKeySequence("Ctrl+Up"))
-        pointermenu.addAction(self.pointerupaction)
-
-        self.pointerdownaction = QAction("Pointer Down", self)
-        self.pointerdownaction.triggered.connect(self.btn_down.animateClick)
-        self.pointerdownaction.setShortcut(QKeySequence("Ctrl+Down"))
-        pointermenu.addAction(self.pointerdownaction)
-        self.pointerrightaction = QAction("Pointer Right", self)
-        self.pointerrightaction.triggered.connect(self.btn_right.animateClick)
-        self.pointerrightaction.setShortcut(QKeySequence("Ctrl+Right"))
-        pointermenu.addAction(self.pointerrightaction)
-
-        self.pointerleftaction = QAction("Pointer Left", self)
-        self.pointerleftaction.triggered.connect(self.btn_left.animateClick)
-        self.pointerleftaction.setShortcut(QKeySequence("Ctrl+Left"))
-        pointermenu.addAction(self.pointerleftaction)
-
-        self.pointerzeroaction = QAction("Pointer Zero", self)
-        self.pointerzeroaction.triggered.connect(self.btn_zero.animateClick)
-        self.pointerzeroaction.setShortcut(QKeySequence("Ctrl+0"))
-        pointermenu.addAction(self.pointerzeroaction)
+        
 
         
 
@@ -633,6 +577,69 @@ class RocketUI(QWidget):
 
 
         self.setLayout(final_layout)
+
+
+
+        #refresh_ports
+        actionsmenu = self.menubar.addMenu("Actions")
+        self.refreshaction = QAction("Refresh Ports", self)
+        self.refreshaction.triggered.connect(self.refresh_ports_btn.animateClick)
+        self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
+        actionsmenu.addAction(self.refreshaction)
+
+        self.toggleConnectGND = QAction("Connect Ground Station", self)
+        self.toggleConnectGND.triggered.connect(self.connect_btn.animateClick)
+        self.toggleConnectGND.setShortcut(QKeySequence("Ctrl+Alt+C"))
+        actionsmenu.addAction(self.toggleConnectGND)
+
+        self.toggleConnectAntenna = QAction("Connect Antenna Pointer", self)
+        self.toggleConnectAntenna.triggered.connect(self.connect_btn_antenna.animateClick)
+        self.toggleConnectAntenna.setShortcut(QKeySequence("Shift+Ctrl+Alt+C"))
+        actionsmenu.addAction(self.toggleConnectAntenna)
+
+        self.togglePollingAction = QAction("Start Polling", self)
+        self.togglePollingAction.triggered.connect(self.poll_btn.animateClick)
+        self.togglePollingAction.setShortcut(QKeySequence("Ctrl+Return"))
+        self.togglePollingAction.setEnabled(False)
+        actionsmenu.addAction(self.togglePollingAction)
+
+        self.toggleLoggingAction = QAction("Start Logging", self)
+        self.toggleLoggingAction.triggered.connect(self.log_btn.animateClick)
+        self.toggleLoggingAction.setShortcut(QKeySequence("Ctrl+L"))
+        self.toggleLoggingAction.setEnabled(False)
+        actionsmenu.addAction(self.toggleLoggingAction)
+
+
+
+
+        pointermenu = self.menubar.addMenu("Antenna Pointer")
+
+        self.pointerupaction = QAction("Pointer Up", self)
+        self.pointerupaction.triggered.connect(self.btn_up.animateClick)
+        self.pointerupaction.setShortcut(QKeySequence("Ctrl+Up"))
+        pointermenu.addAction(self.pointerupaction)
+
+        self.pointerdownaction = QAction("Pointer Down", self)
+        self.pointerdownaction.triggered.connect(self.btn_down.animateClick)
+        self.pointerdownaction.setShortcut(QKeySequence("Ctrl+Down"))
+        pointermenu.addAction(self.pointerdownaction)
+        self.pointerrightaction = QAction("Pointer Right", self)
+        self.pointerrightaction.triggered.connect(self.btn_right.animateClick)
+        self.pointerrightaction.setShortcut(QKeySequence("Ctrl+Right"))
+        pointermenu.addAction(self.pointerrightaction)
+
+        self.pointerleftaction = QAction("Pointer Left", self)
+        self.pointerleftaction.triggered.connect(self.btn_left.animateClick)
+        self.pointerleftaction.setShortcut(QKeySequence("Ctrl+Left"))
+        pointermenu.addAction(self.pointerleftaction)
+
+        self.pointerzeroaction = QAction("Pointer Zero", self)
+        self.pointerzeroaction.triggered.connect(self.btn_zero.animateClick)
+        self.pointerzeroaction.setShortcut(QKeySequence("Ctrl+0"))
+        pointermenu.addAction(self.pointerzeroaction)
+
+
+        
 
         
 
