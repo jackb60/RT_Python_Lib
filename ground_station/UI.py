@@ -41,6 +41,7 @@ except Exception as e:
     raise ImportError("Could not import `rocket` from rocket.py. Ensure rocket.py is in the same folder.") from e
 
 POLL_MS = 1
+ANGLE_CALC_MS = 200
 DEFAULT_WINDOW_TITLE = "Unlocked Rkt Telemetry UI"
 IS_MACOS = (sys.platform == "darwin")
 REASONABLE_TEMP = 30
@@ -58,16 +59,21 @@ class RocketUI(QWidget):
         self.tracking_enabled = False
         self.poll_timer = QTimer()
         self.time_timer = QTimer()
+        self.calc_angle_timer = QTimer()
         self.poll_timer.setInterval(POLL_MS)
         self.time_timer.setInterval(POLL_MS)
+        self.calc_angle_timer.setInterval(ANGLE_CALC_MS)
         self.poll_timer.timeout.connect(self.poll_telemetry)
         self.time_timer.timeout.connect(self.update_time)
+        self.calc_angle_timer.timeout.connect(self.send_calc_angles_req)
         self.time_timer.start()
+        self.calc_angle_timer.start()
         self.polling = False
         self.is_gndgps_frozen = False
         self.frozen_lat = 0
         self.frozen_lon = 0
         self.frozen_alt = 0
+        self.has_polled_at_least_once = False
 
         self._build_ui()
         self.refresh_ports()
@@ -424,7 +430,7 @@ class RocketUI(QWidget):
         vl.addLayout(gridL)
 
 
-        self.hold_gnd_gps_fixed_btn = QPushButton("Hold")
+        self.hold_gnd_gps_fixed_btn = QPushButton("Send to AntPtr")
         self.hold_gnd_gps_fixed_btn.setCheckable(True)
         self.hold_gnd_gps_fixed_btn.clicked.connect(self.hold_gnd_gps_fixed)
         vl.addWidget(self.hold_gnd_gps_fixed_btn)
@@ -739,13 +745,18 @@ class RocketUI(QWidget):
         readonly_is7p4Von = self.chkbx_7p4V_readonly.isChecked()
         readonly_is8p4Von = self.chkbx_8p4V_readonly.isChecked()
         readonly_is28Von  = self.chkbx_28V_readonly.isChecked()
-        self.chkbx_master_readonly.setCheckState(Qt.PartiallyChecked if not(readonly_is3Von and 
+        self.chkbx_master_readonly.setCheckState(Qt.PartiallyChecked if (readonly_is3Von or 
+                                                                            readonly_is3p3Von or 
+                                                                            readonly_is5Von or 
+                                                                            readonly_is7p4Von or 
+                                                                            readonly_is8p4Von or 
+                                                                            readonly_is28Von) 
+                                                                        else (Qt.Checked if (readonly_is3Von and 
                                                                             readonly_is3p3Von and 
                                                                             readonly_is5Von and 
                                                                             readonly_is7p4Von and 
                                                                             readonly_is8p4Von and 
-                                                                            readonly_is28Von) 
-                                                                        else Qt.Checked)
+                                                                            readonly_is28Von) else Qt.Unchecked))
 
 
     
@@ -846,6 +857,7 @@ class RocketUI(QWidget):
     # Polling / Logging
     # -------------------------
     def toggle_polling(self):
+        self.has_polled_at_least_once = True
         if self.polling:
             self.poll_timer.stop()
             self.polling = False
@@ -900,6 +912,7 @@ class RocketUI(QWidget):
     # Telemetry polling
     # -------------------------
     def poll_telemetry(self):
+        """ ## HANDLED BY SEPARATE TIMER
         if self.tracking_enabled:
             try:
                 rocket_lat = getattr(self.rocket, "lat", None)
@@ -911,7 +924,7 @@ class RocketUI(QWidget):
                     self.pointer.send_angles(azimuth, elevation)
 
             except Exception as e:
-                self.status_label.setText(f"Pointer tracking error: {e}")
+                self.status_label.setText(f"Pointer tracking error: {e}")"""
         try:
             ok = False
             if hasattr(self.rocket, "telemetry_downlink_update"):
@@ -938,7 +951,7 @@ class RocketUI(QWidget):
         }
 
         GPS_snapshot = {
-            "GPS Fix": getattr(self.rocket, "gps_fix", ""),
+            "GPS Fix": getattr(self.rocket, "gps_fix", False),
             "GPS Lat": getattr(self.rocket, "lat", ""),
             "GPS Lon": getattr(self.rocket, "lon", ""),
             "GPS Alt (m)": getattr(self.rocket, "gpsalt", ""),
@@ -1031,6 +1044,13 @@ class RocketUI(QWidget):
                 display_val = str(v)
             self.gps_table.setItem(row, 0, QTableWidgetItem(str(k)))
             self.gps_table.setItem(row, 1, QTableWidgetItem(display_val))
+
+        if GPS_snapshot["GPS Fix"]:
+            self.gps_table.item(0,0).setBackground(QBrush(Qt.darkGreen))
+            self.gps_table.item(0,1).setBackground(QBrush(Qt.darkGreen))
+        else:
+            self.gps_table.item(0,0).setBackground(QBrush(Qt.red))
+            self.gps_table.item(0,1).setBackground(QBrush(Qt.red))
 
         self.power_table.setRowCount(len(power_snapshot))
         for row,dat in enumerate(power_snapshot):
@@ -1298,9 +1318,9 @@ class RocketUI(QWidget):
 
 
 
-        statuses = getattr(self.rocket,"enabled_status",[1]*5)
+        statuses = getattr(self.rocket,"enabled_status",[0]*6)
         for i,chkbx in enumerate(
-                [self.chkbx_3V_readonly,self.chkbx_5V_readonly,self.chkbx_7p4V_readonly,self.chkbx_8p4V_readonly,self.chkbx_28V_readonly]
+                [self.chkbx_3V_readonly,self.chkbx_3p3V_readonly,self.chkbx_5V_readonly,self.chkbx_7p4V_readonly,self.chkbx_8p4V_readonly,self.chkbx_28V_readonly]
                 ):
             self.switched_from_polled_telemetry = True
             chkbx.setChecked(statuses[i])
@@ -1450,12 +1470,43 @@ class RocketUI(QWidget):
     # -------------------------
     # Safe command wrappers
     # -------------------------
+
+
+    def send_calc_angles_req(self):
+        connected = getattr(self.rocket, "ser", None) is not None
+        connected_antenna = getattr(self.pointer, "isConnected", False)
+
+        rocketFixExists = getattr(self.rocket, "gps_fix", False)
+        rocketLat = 0
+        rocketLon = 0
+        rocketAlt = 0
+        if rocketFixExists:
+            rocketLat = getattr(self.rocket, "lat", 0)
+            rocketLon = getattr(self.rocket, "lon", 0)
+            rocketAlt = getattr(self.rocket, "barofilteredalt", 0)
+
+        if connected & connected_antenna:
+            if self.is_gndgps_frozen:
+                if rocketFixExists:
+                    if self.tracking_enabled:
+                        # Good to go
+                        if hasattr(self.pointer,"refreshPointerState"):
+                            self.pointer.refreshPointerState(rocketLat,rocketLon,rocketAlt)
+                        else:
+                            print("[UI] [AntennaPtr] FAILED TO RUN UPDATE ROUTINE - FATAL !!")
+        else:
+            # unconnected, cannot perform action.
+            pass
+
+
+
     def hold_gnd_gps_fixed(self):
         if not self.is_gndgps_frozen:
             print("[UI] [AntennaPtr] Req holding the Gnd Station GPS coords fixed.")
             if not getattr(self.rocket,"gnd_fix",False):
                 if (getattr(self.rocket,"gnd_lat",0) == 0) & (getattr(self.rocket,"gnd_lon",0) == 0):
                     print("[UI] [AntennaPtr] WARNING Attempting to hold to nonexistent coordinates. Not saving....")
+                    self.status_label.setText("WARNING Attempting to hold to nonexistent coordinates. Not sent.")
                     self.hold_gnd_gps_fixed_btn.setChecked(False)
                     return
             else:
@@ -1482,14 +1533,22 @@ class RocketUI(QWidget):
 
                 self.is_gndgps_frozen = True
                 print("[UI] [AntennaPtr] Successfully saved new fix; lat {} lon {} alt {}".format(self.frozen_lat,self.frozen_lon,self.frozen_alt))
-                self.hold_gnd_gps_fixed_btn.setText("Holding")
+                self.hold_gnd_gps_fixed_btn.setText("Fixed for AntPtr")
+                if hasattr(self.pointer,"updateGPS"):
+                    self.pointer.updateGPS(self.frozen_lat,self.frozen_lon,self.frozen_alt)
+                    print("[UI] [AntennaPtr] Successfully sent new GPS coords to Antenna Pointer on {}.".format(self.pointer.port))
+                    self.status_label.setText("Successfully sent new GPS coords to Antenna Pointer on {}.".format(self.pointer.port))
+                else:
+                    print("[UI] [AntennaPtr] WARNING Antenna pointer did not receive new GPS coords !!")
+                    self.status_label.setText("FAILED TO SEND new GPS coords to Antenna Pointer on {}.".format(self.pointer.port))
             except Exception as e:
                 print("[UI] [AntennaPtr] Failed to obtain Gnd Gps Fix !")
                 print(e)
         else:
             print("[UI] [AntennaPtr] Unfreezing Gnd Station GPS coords.")
+            self.status_label.setText("Unfroze Ground Station GPS coords")
             self.is_gndgps_frozen = False
-            self.hold_gnd_gps_fixed_btn.setText("Hold")
+            self.hold_gnd_gps_fixed_btn.setText("Send to AntPtr")
             self.frozen_lat = 0
             self.frozen_lon = 0
             self.frozen_alt = 0
@@ -1713,7 +1772,7 @@ class RocketUI(QWidget):
         self.disconnect_btn_antenna.setEnabled(connected_antenna)
         self.pointer_group.setEnabled(connected_antenna)
         self.gndgpsbox.setEnabled(connected)
-        self.hold_gnd_gps_fixed_btn.setEnabled(connected_antenna & connected)
+        self.hold_gnd_gps_fixed_btn.setEnabled(connected_antenna & connected & self.has_polled_at_least_once)
         self.poll_btn.setEnabled(connected)
         if not connected:
             self.poll_btn.setStyleSheet("color: rgba(29, 112, 245,0.5); font-weight:bold;")

@@ -70,10 +70,9 @@ class rocket:
         self.bms_temp = 0 # battery source
 
 
-        self.enabled_status = [1] * 6 # 1 for True, 0 for False
+        self.enabled_status = [0] * 6 # 1 for True, 0 for False
         # order:   3 3.3 5 7.4 8.4 28
         # index    0  1  2  3   4  5
-        self.enabled_status = [1,1,1,0,0,0] # testing
     
         self.angleFromVertical = 0 
 
@@ -81,6 +80,20 @@ class rocket:
         self.gnd_lon = 0
         self.gnd_fix = False
         self.gnd_alt = 0
+
+
+
+
+
+        ### FUDGING FOR TESTING
+
+        """self.gnd_alt = 100
+        self.gnd_lat = 0.01
+        self.gnd_fix = True
+
+        self.barofilteredalt = 1000
+        self.FUDGED_BARO = True
+        self.gps_fix = True"""
         
     
     def log_data_start(self):
@@ -210,7 +223,11 @@ class rocket:
             #to-do: Pressure/Alt conversion
             
             #Parse moving avg height
+
             self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+
+            #if not self.FUDGED_BARO:
+            #    self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
 
             #Parse state
             self.state = state(packet[63])
@@ -279,7 +296,6 @@ class rocket:
         data[13] = 0x14
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
-        
         
 
     def zero_pitchYawRoll(self):
