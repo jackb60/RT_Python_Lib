@@ -127,7 +127,7 @@ class RocketUI(QWidget):
         #refresh_ports
         actionsmenu = self.menubar.addMenu("Actions")
         self.refreshaction = QAction("Refresh Ports", self)
-        self.refreshaction.triggered.connect(self.refresh_ports)
+        self.refreshaction.triggered.connect(self.refresh_ports_btn.animateClick)
         self.refreshaction.setShortcut(QKeySequence("Ctrl+R"))
         actionsmenu.addAction(self.refreshaction)
 
@@ -142,13 +142,13 @@ class RocketUI(QWidget):
         actionsmenu.addAction(self.toggleConnectAntenna)
 
         self.togglePollingAction = QAction("Start Polling", self)
-        self.togglePollingAction.triggered.connect(self.toggle_polling)
+        self.togglePollingAction.triggered.connect(self.poll_btn.animateClick)
         self.togglePollingAction.setShortcut(QKeySequence("Ctrl+Return"))
         self.togglePollingAction.setEnabled(False)
         actionsmenu.addAction(self.togglePollingAction)
 
         self.toggleLoggingAction = QAction("Start Logging", self)
-        self.toggleLoggingAction.triggered.connect(self.toggle_logging)
+        self.toggleLoggingAction.triggered.connect(self.log_btn.animateClick)
         self.toggleLoggingAction.setShortcut(QKeySequence("Ctrl+L"))
         self.toggleLoggingAction.setEnabled(False)
         actionsmenu.addAction(self.toggleLoggingAction)
@@ -159,28 +159,28 @@ class RocketUI(QWidget):
         pointermenu = self.menubar.addMenu("Antenna Pointer")
 
         self.pointerupaction = QAction("Pointer Up", self)
-        self.pointerupaction.triggered.connect(lambda: ((print("[PTR] UP") == None) & (self.pointer_cmd("up") == None)))
+        self.pointerupaction.triggered.connect(self.btn_up.animateClick)
         self.pointerupaction.setShortcut(QKeySequence("Ctrl+Up"))
         pointermenu.addAction(self.pointerupaction)
 
         self.pointerdownaction = QAction("Pointer Down", self)
-        self.pointerdownaction.triggered.connect(lambda: ((print("[PTR] DOWN") == None) & (self.pointer_cmd("down") == None)))
+        self.pointerdownaction.triggered.connect(self.btn_down.animateClick)
         self.pointerdownaction.setShortcut(QKeySequence("Ctrl+Down"))
         pointermenu.addAction(self.pointerdownaction)
         self.pointerrightaction = QAction("Pointer Right", self)
-        self.pointerrightaction.triggered.connect(lambda: ((print("[PTR] Right") == None) & (self.pointer_cmd("right") == None)))
+        self.pointerrightaction.triggered.connect(self.btn_right.animateClick)
         self.pointerrightaction.setShortcut(QKeySequence("Ctrl+Right"))
         pointermenu.addAction(self.pointerrightaction)
 
         self.pointerleftaction = QAction("Pointer Left", self)
-        self.pointerleftaction.triggered.connect(lambda: ((print("[PTR] Left") == None) & (self.pointer_cmd("left") == None)))
+        self.pointerleftaction.triggered.connect(self.btn_left.animateClick)
         self.pointerleftaction.setShortcut(QKeySequence("Ctrl+Left"))
         pointermenu.addAction(self.pointerleftaction)
 
-        self.pointerleftaction = QAction("Pointer Zero", self)
-        self.pointerleftaction.triggered.connect(lambda: ((print("[PTR] Zero") == None) & (self.pointer_cmd("zero") == None)))
-        self.pointerleftaction.setShortcut(QKeySequence("Ctrl+0"))
-        pointermenu.addAction(self.pointerleftaction)
+        self.pointerzeroaction = QAction("Pointer Zero", self)
+        self.pointerzeroaction.triggered.connect(self.btn_zero.animateClick)
+        self.pointerzeroaction.setShortcut(QKeySequence("Ctrl+0"))
+        pointermenu.addAction(self.pointerzeroaction)
 
         
 
