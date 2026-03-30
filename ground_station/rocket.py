@@ -17,11 +17,14 @@ class state(Enum):
 class rocket:
     def __init__(self):
         #to-do: clean this up
+        
         self.pid = [0, 0, 0] #p, i, d
         self.ser = None# serial.Serial('COM11', 115200, timeout=1)
         self.logging = False
         self.file = None
+        self.file_badpackets = None
         self.csv_writer = None
+        self.csv_writer_badpackets = None
 
         self.pyros = [0] * 6
         self.servos = [0] * 4
@@ -81,6 +84,7 @@ class rocket:
         self.gnd_fix = False
         self.gnd_alt = 0
 
+        self.debug = True
 
 
 
@@ -99,29 +103,80 @@ class rocket:
     def log_data_start(self):
         self.logging = True
         self.file = open(f"telemetry/telemetry_{time.time()}.csv", "w", newline='')
+        self.file_badpackets = open(f"telemetry/telemetry_badpackets_{time.time()}.csv", "w", newline='')
         self.csv_writer = csv.writer(self.file)
+        self.csv_writer_badpackets = csv.writer(self.file_badpackets)
         header = [
-                    "time", "pyrostat", "servostat", "accel", "barometer",
-                    "baro_alt_filtered", "baro_vel_filtered", "temp", "gyro",
-                    "magnetometer", "heading", "gps_fix_status", "lat", "lon", "gpsalt",
-                    "pdop", "hdop", "vdop","gps_horiz_prec","gps_vert_prec","gps_num_sat", "flight_time", "last_rec",
-                    "yaw_gyro_int", "pitch_gyro_int", "roll_gyro_int",
-                    "batt_voltage", "rocket_state", "pktnum", "rssi",
-                    "armed_pyros", "fired_pyros", "badpackets", "rxrssi",
-                    "accel_integrated_velo", "baro_max_alt", "gps_max_alt"
-                ]
+        "timestamp",
+        "pyros",
+        "servos",
+        "servos_deg",
+        "accelerometer",
+        "barometer",
+        "barofilteredalt",
+        "barofilteredvelo",
+        "temp",
+        "gyro",
+        "magnetometer",
+        "heading",
+        "gps_fix",
+        "lat",
+        "lon",
+        "gpsalt",
+        "pdop",
+        "hdop",
+        "vdop",
+        "gps_horiz_prec",
+        "gps_vert_prec",
+        "gps_num_sat",
+        "flight_time",
+        "last_rec",
+        "yaw_gyro_int",
+        "pitch_gyro_int",
+        "roll_gyro_int",
+        "batt_voltage",
+        "state",
+        "pktnum",
+        "rssi",
+        "armed_pyros",
+        "fired_pyros",
+        "badpackets",
+        "rxrssi",
+        "accel_integrated_velo",
+        "baro_max_alt",
+        "gps_max_alt",
+        "pyro_resistances",
+        "cell_voltages",
+        "total_current",
+        "converter_voltages",
+        "converter_currents",
+        "bms_protections_enabled",
+        "bms_protection_status",
+        "bms_temp",
+        "enabled_status",
+        "angleFromVertical",
+        "gnd_lat",
+        "gnd_lon",
+        "gnd_fix",
+        "gnd_alt"
+        ]
         self.csv_writer.writerow(header)
+        self.csv_writer_badpackets.writerow(header)
         self.file.flush()
+        self.file_badpackets.flush()
         os.fsync(self.file.fileno())
+        os.fsync(self.file_badpackets.fileno())
 
     def log_data_stop(self):
         self.logging = False
         self.file.close()
+        self.file_badpackets.close()
 
     """
     Returns: False if failed (no data/bad data), True if success
     """
     def telemetry_downlink_update(self):
+        flag_bad_packet = False
         if self.ser is None or not self.ser.is_open:
             return False
         if self.ser.in_waiting == 0:
@@ -147,7 +202,7 @@ class rocket:
                     chksum %= 256
             
             if chksum != packet[127]:
-                return False
+                flag_bad_packet = True
             
             #to-do: still store packets with failed checksum somewhere
 
@@ -265,25 +320,74 @@ class rocket:
             #Parse Integrated Acceleration
             self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
-
-
             self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi;
 
 
             if self.logging:
                 data = [
-                    time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
-                    self.barofilteredalt, self.barofilteredvelo, self.temp, self.gyro,
-                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.lon, self.gpsalt,
-                    self.pdop, self.hdop, self.vdop, self.flight_time, self.last_rec,
-                    self.yaw_gyro_int, self.pitch_gyro_int, self.roll_gyro_int,
-                    self.batt_voltage, str(self.state), self.pktnum, self.rssi,
-                    self.armed, self.fired, self.badpackets, self.rxrssi,
-                    self.accel_integrated_velo, self.baro_max_alt, self.gps_max_alt
+                    time.time(),
+                    self.pyros,
+                    self.servos,
+                    self.servos_deg,
+                    self.accelerometer,
+                    self.barometer,
+                    self.barofilteredalt,
+                    self.barofilteredvelo,
+                    self.temp,
+                    self.gyro,
+                    self.magnetometer,
+                    self.heading,
+                    self.gps_fix,
+                    self.lat,
+                    self.lon,
+                    self.gpsalt,
+                    self.pdop,
+                    self.hdop,
+                    self.vdop,
+                    self.gps_horiz_prec,
+                    self.gps_vert_prec,
+                    self.gps_num_sat,
+                    self.flight_time,
+                    self.last_rec,
+                    self.yaw_gyro_int,
+                    self.pitch_gyro_int,
+                    self.roll_gyro_int,
+                    self.batt_voltage,
+                    str(self.state),
+                    self.pktnum,
+                    self.rssi,
+                    self.armed_pyros,
+                    self.fired_pyros,
+                    self.badpackets,
+                    self.rxrssi,
+                    self.accel_integrated_velo,
+                    self.baro_max_alt,
+                    self.gps_max_alt,
+                    self.pyro_resistances,
+                    self.cell_voltages,
+                    self.total_current,
+                    self.converter_voltages,
+                    self.converter_currents,
+                    self.bms_protections_enabled,
+                    self.bms_protection_status,
+                    self.bms_temp,
+                    self.enabled_status,
+                    self.angleFromVertical,
+                    self.gnd_lat,
+                    self.gnd_lon,
+                    self.gnd_fix,
+                    self.gnd_alt
                 ]
-                self.csv_writer.writerow(data)
-                self.file.flush()
-                os.fsync(self.file.fileno())
+                if flag_bad_packet:
+                    self.csv_writer_badpackets.writerow(data)
+                    self.file_badpackets.flush()
+                    os.fsync(self.file_badpackets.fileno())
+                    if self.debug:
+                        print("[RKT] WARNING Bad Packet Received, storing.")
+                else:
+                    self.csv_writer.writerow(data)
+                    self.file.flush()
+                    os.fsync(self.file.fileno())
             return True
 
     
@@ -508,8 +612,18 @@ class rocket:
 
 
 
-
-
+""" old
+                data = [
+                    time.time(), self.pyros, self.servos, self.accelerometer, self.barometer,
+                    self.barofilteredalt, self.barofilteredvelo, self.temp, self.gyro,
+                    self.magnetometer, self.heading, self.gps_fix, self.lat, self.lon, self.gpsalt,
+                    self.pdop, self.hdop, self.vdop, self.flight_time, self.last_rec,
+                    self.yaw_gyro_int, self.pitch_gyro_int, self.roll_gyro_int,
+                    self.batt_voltage, str(self.state), self.pktnum, self.rssi,
+                    self.armed, self.fired, self.badpackets, self.rxrssi,
+                    self.accel_integrated_velo, self.baro_max_alt, self.gps_max_alt
+                ]
+"""
 
 
 
