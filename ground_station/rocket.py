@@ -74,9 +74,10 @@ class rocket:
         self.bms_temp = 0 # battery source
 
 
-        self.enabled_status = [0] * 6 # 1 for True, 0 for False
+        self.enabled_status = [1] * 6 # 1 for True, 0 for False
         # order:   3 3.3 5 7.4 8.4 28
         # index    0  1  2  3   4  5
+        # Todo: write method to update these
     
         self.angleFromVertical = 0 
 

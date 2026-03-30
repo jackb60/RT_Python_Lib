@@ -995,14 +995,14 @@ class RocketUI(QWidget):
             "28V Current (V): " : getattr(self.rocket, "converter_currents", "")[5],
         }
         power_snapshot = [
-            ["Total", "-", getattr(self.rocket, "total_current", "")],
-            ["3V",   getattr(self.rocket, "converter_voltages", "")[0], getattr(self.rocket, "converter_currents", "")[0]],
-            ["3.3V", getattr(self.rocket, "converter_voltages", "")[1], getattr(self.rocket, "converter_currents", "")[1]],
-            ["5V",   getattr(self.rocket, "converter_voltages", "")[2], getattr(self.rocket, "converter_currents", "")[2]],
-            ["7.4V", getattr(self.rocket, "converter_voltages", "")[3], getattr(self.rocket, "converter_currents", "")[3]],
-            ["8.4V", getattr(self.rocket, "converter_voltages", "")[4], getattr(self.rocket, "converter_currents", "")[4]],
-            ["28V", getattr(self.rocket, "converter_voltages", "")[5], getattr(self.rocket, "converter_currents", "")[5]],
-            ["Pwr Temp (°C)", getattr(self.rocket, "bms_temp", ""), "-"],
+            ["Total", "-", np.round(getattr(self.rocket, "total_current", ""),2)],
+            ["3V",   np.round(getattr(self.rocket, "converter_voltages", "")[0],2) np.round(getattr(self.rocket, "converter_currents", "")[0],2)],
+            ["3.3V", np.round(getattr(self.rocket, "converter_voltages", "")[1],2) np.round(getattr(self.rocket, "converter_currents", "")[1],2)],
+            ["5V",   np.round(getattr(self.rocket, "converter_voltages", "")[2],2) np.round(getattr(self.rocket, "converter_currents", "")[2],2)],
+            ["7.4V", np.round(getattr(self.rocket, "converter_voltages", "")[3],2) np.round(getattr(self.rocket, "converter_currents", "")[3],2)],
+            ["8.4V", np.round(getattr(self.rocket, "converter_voltages", "")[4],2) np.round(getattr(self.rocket, "converter_currents", "")[4],2)],
+            ["28V",  np.round(getattr(self.rocket, "converter_voltages", "")[5],2) np.round(getattr(self.rocket, "converter_currents", "")[5],2)],
+            ["Pwr Temp (°C)", np.round(getattr(self.rocket, "bms_temp", ""),1), "-"],
         ]
 
         power_snapshot_testing = [
