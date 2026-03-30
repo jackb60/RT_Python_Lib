@@ -5,6 +5,7 @@ import time
 import os
 import csv
 import sys
+import numpy as np
 
 class state(Enum):
     GROUND_TESTING = 0
@@ -187,12 +188,12 @@ class rocket:
             while self.ser.read(1) != bytes([0xAB]):
                 pass
             packet = self.ser.read(128)
-            gnd_info = self.ser.read(8)
+            gnd_info = self.ser.read(14)
             self.rssi = struct.unpack("<b", gnd_info[0:1])[0] - 99
             self.gnd_fix = gnd_info[1]
-            self.gnd_lat = struct.unpack("<l", gnd_info[2:4])[0] * 1e-7
-            self.gnd_lon = struct.unpack("<l", gnd_info[4:6])[0] * 1e-7
-            self.gnd_alt = struct.unpack("<l", gnd_info[6:8])[0] / 1000
+            self.gnd_lat = struct.unpack("<l", gnd_info[2:6])[0] * 1e-7
+            self.gnd_lon = struct.unpack("<l", gnd_info[6:10])[0] * 1e-7
+            self.gnd_alt = struct.unpack("<l", gnd_info[10:14])[0] / 1000
             
             #Verify checksum
             chksum = 0
@@ -303,7 +304,7 @@ class rocket:
             self.pktnum = struct.unpack("<H", packet[84:86])[0]
             
             #Parse RSSI
-            self.rxrssi = struct.unpack("<b", packet[86]) - 99
+            self.rxrssi = struct.unpack("<b", packet[86:87])[0] - 99
 
             #Parse BMS
             for i in range(0, 3):
@@ -320,7 +321,7 @@ class rocket:
             #Parse Integrated Acceleration
             self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
-            self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi;
+            self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * np.cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi
 
 
             if self.logging:
@@ -356,8 +357,9 @@ class rocket:
                     str(self.state),
                     self.pktnum,
                     self.rssi,
-                    self.armed_pyros,
-                    self.fired_pyros,
+                    #Todo: THESE DON'T EXIST
+                    #self.armed_pyros,
+                    #self.fired_pyros,
                     self.badpackets,
                     self.rxrssi,
                     self.accel_integrated_velo,
