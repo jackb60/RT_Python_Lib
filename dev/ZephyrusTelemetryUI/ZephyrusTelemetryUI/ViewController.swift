@@ -15,6 +15,7 @@ class ViewController: NSViewController, NSWindowDelegate {
 
     @IBOutlet weak var toggleUI: NSButton!
     @IBOutlet weak var saveLog: NSButton!
+    @IBOutlet weak var pathField: NSTextField!
     @IBOutlet weak var clearLog: NSButton!
 
     var isUIOn: Bool = false
@@ -79,7 +80,7 @@ class ViewController: NSViewController, NSWindowDelegate {
 
             process.standardOutput = pipe
             process.standardError = pipe
-            process.currentDirectoryURL = URL(fileURLWithPath: "/Users/mdn/Developer/MIT_Rkt_Team/Avionics2025/RT_Python_Lib/ground_station")
+            process.currentDirectoryURL = URL(fileURLWithPath: pathField.stringValue)
 
             var env = ProcessInfo.processInfo.environment
             env["PYTHONUNBUFFERED"] = "1"

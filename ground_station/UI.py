@@ -885,11 +885,35 @@ class RocketUI(QWidget):
         self.update_ui_state()
 
     def toggle_logging(self):
+        print("[UI] [Log] Toggle Logging Requested")
+        import os
+        wd = os.getcwd() 
+        flag_bad_dir = False
+        try:
+            if wd[-14:] != 'ground_station':
+                flag_bad_dir = True
+        except:
+            flag_bad_dir = True
+
+        if flag_bad_dir:
+            QMessageBox.critical(self, "Logging Will Fail", "Logging will fail due to wrong directory. Please launch using {}".format(
+                    "the batch file in `ground_station` in the `RT_Python_Lib` folder" if not IS_MACOS else
+                    "the ZephyrusTelemetryUI app, and specify the path to the `ground_station` folder."
+                ))
+            log_btn.setChecked(False)
+            return False
+        else:
+            print("[UI] [Log] Logging should work, proceeding...")
+
+
+
+
         if not hasattr(self,'is_logging'):
             self.is_logging = False
         self.is_logging = not self.is_logging
         self.log_btn.setChecked(self.log_btn.isChecked())
         if self.is_logging:
+            print("[UI] [Log] Starting Logging...")
             try:
                 if hasattr(self.rocket, "log_data_start"):
                     self.rocket.log_data_start()
@@ -897,12 +921,15 @@ class RocketUI(QWidget):
                     self.status_label.setText("Logging started")
                     if hasattr(self,"toggleLoggingAction"):
                         self.toggleLoggingAction.setText("Stop Logging");
+                    print("[UI] [Log] Started Logging.")
                 else:
                     raise RuntimeError("rocket.log_data_start not implemented")
             except Exception as e:
                 QMessageBox.critical(self, "Logging Error", str(e))
                 self.log_btn.setChecked(False)
+                print("[UI] [Log] Failed to start logging.")
         else:
+            print("[UI] [Log] Stopping Logging....")
             try:
                 if hasattr(self.rocket, "log_data_stop"):
                     self.rocket.log_data_stop()
@@ -910,10 +937,12 @@ class RocketUI(QWidget):
                     self.status_label.setText("Logging stopped")
                     if hasattr(self,"toggleLoggingAction"):
                         self.toggleLoggingAction.setText("Start Logging");
+                    print("[UI] [Log] Stopped Logging.")
                 else:
                     raise RuntimeError("rocket.log_data_stop not implemented")
             except Exception as e:
                 QMessageBox.warning(self, "Logging Error", str(e))
+                print("[UI] [Log] Failed to stop logging.")
 
     # -------------------------
     # Telemetry polling
@@ -995,14 +1024,14 @@ class RocketUI(QWidget):
             "28V Current (V): " : getattr(self.rocket, "converter_currents", "")[5],
         }
         power_snapshot = [
-            ["Total", "-", np.round(getattr(self.rocket, "total_current", ""),2)],
-            ["3V",   np.round(getattr(self.rocket, "converter_voltages", "")[0],2) np.round(getattr(self.rocket, "converter_currents", "")[0],2)],
-            ["3.3V", np.round(getattr(self.rocket, "converter_voltages", "")[1],2) np.round(getattr(self.rocket, "converter_currents", "")[1],2)],
-            ["5V",   np.round(getattr(self.rocket, "converter_voltages", "")[2],2) np.round(getattr(self.rocket, "converter_currents", "")[2],2)],
-            ["7.4V", np.round(getattr(self.rocket, "converter_voltages", "")[3],2) np.round(getattr(self.rocket, "converter_currents", "")[3],2)],
-            ["8.4V", np.round(getattr(self.rocket, "converter_voltages", "")[4],2) np.round(getattr(self.rocket, "converter_currents", "")[4],2)],
-            ["28V",  np.round(getattr(self.rocket, "converter_voltages", "")[5],2) np.round(getattr(self.rocket, "converter_currents", "")[5],2)],
-            ["Pwr Temp (°C)", np.round(getattr(self.rocket, "bms_temp", ""),1), "-"],
+            ["Total", "-", np.round(getattr(self.rocket, "total_current", -1),2)],
+            ["3V",   np.round(getattr(self.rocket, "converter_voltages", -1)[0],2), np.round(getattr(self.rocket, "converter_currents", -1)[0],2)],
+            ["3.3V", np.round(getattr(self.rocket, "converter_voltages", -1)[1],2), np.round(getattr(self.rocket, "converter_currents", -1)[1],2)],
+            ["5V",   np.round(getattr(self.rocket, "converter_voltages", -1)[2],2), np.round(getattr(self.rocket, "converter_currents", -1)[2],2)],
+            ["7.4V", np.round(getattr(self.rocket, "converter_voltages", -1)[3],2), np.round(getattr(self.rocket, "converter_currents", -1)[3],2)],
+            ["8.4V", np.round(getattr(self.rocket, "converter_voltages", -1)[4],2), np.round(getattr(self.rocket, "converter_currents", -1)[4],2)],
+            ["28V",  np.round(getattr(self.rocket, "converter_voltages", -1)[5],2), np.round(getattr(self.rocket, "converter_currents", -1)[5],2)],
+            ["Pwr Temp (°C)", np.round(getattr(self.rocket, "bms_temp", -1),1), "-"],
         ]
 
         power_snapshot_testing = [

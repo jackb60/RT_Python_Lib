@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="24765" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
     <dependencies>
+        <deployment identifier="macosx"/>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24765"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -706,11 +707,11 @@
             <objects>
                 <viewController id="XfG-lQ-9wD" customClass="ViewController" customModule="ZephyrusTelemetryUI" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" id="m2S-Jp-Qdl">
-                        <rect key="frame" x="0.0" y="0.0" width="480" height="270"/>
+                        <rect key="frame" x="0.0" y="0.0" width="480" height="302"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="62C-Fp-lVj">
-                                <rect key="frame" x="34" y="226" width="134" height="24"/>
+                                <rect key="frame" x="34" y="258" width="134" height="24"/>
                                 <buttonCell key="cell" type="push" title="Start Telemetry UI" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Rw8-Jr-WF5">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" size="13" name="LucidaGrande"/>
@@ -720,7 +721,7 @@
                                 </connections>
                             </button>
                             <scrollView borderType="groove" autohidesScrollers="YES" horizontalLineScroll="10" horizontalPageScroll="10" verticalLineScroll="10" verticalPageScroll="10" hasHorizontalScroller="NO" translatesAutoresizingMaskIntoConstraints="NO" id="2xc-DE-qF4">
-                                <rect key="frame" x="34" y="20" width="412" height="191"/>
+                                <rect key="frame" x="34" y="52" width="412" height="191"/>
                                 <clipView key="contentView" id="dcb-Av-7oM">
                                     <rect key="frame" x="2" y="2" width="408" height="187"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -757,7 +758,7 @@
                                 </scroller>
                             </scrollView>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="5au-qS-4C1">
-                                <rect key="frame" x="180" y="226" width="80" height="24"/>
+                                <rect key="frame" x="180" y="258" width="80" height="24"/>
                                 <buttonCell key="cell" type="push" title="Save Log" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="KB4-5O-CuW">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" size="13" name="LucidaGrande"/>
@@ -766,8 +767,8 @@
                                     <action selector="saveLogAction:" target="XfG-lQ-9wD" id="IvZ-Kl-fKW"/>
                                 </connections>
                             </button>
-                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="hZg-i2-C7V">
-                                <rect key="frame" x="272" y="226" width="82" height="24"/>
+                            <button verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="hZg-i2-C7V">
+                                <rect key="frame" x="272" y="258" width="82" height="24"/>
                                 <buttonCell key="cell" type="push" title="Clear Log" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="u2z-cg-BX5">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" size="13" name="LucidaGrande"/>
@@ -776,34 +777,58 @@
                                     <action selector="clearLog:" target="XfG-lQ-9wD" id="cjn-xB-e2N"/>
                                 </connections>
                             </button>
+                            <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="ga0-09-WTi">
+                                <rect key="frame" x="32" y="24" width="185" height="16"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" title="Path to ground_station folder:" id="blP-l2-roV">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="7L9-yh-72s">
+                                <rect key="frame" x="223" y="20" width="223" height="24"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" title="/Users/mdn/Developer/MIT_Rkt_Team/Avionics2025/RT_Python_Lib/ground_station" drawsBackground="YES" id="bRr-qU-rsv">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
                         </subviews>
                         <constraints>
                             <constraint firstItem="2xc-DE-qF4" firstAttribute="top" secondItem="62C-Fp-lVj" secondAttribute="bottom" constant="15" id="1qn-OJ-Swp"/>
                             <constraint firstItem="2xc-DE-qF4" firstAttribute="top" secondItem="hZg-i2-C7V" secondAttribute="bottom" constant="15" id="1sA-wr-CAe"/>
-                            <constraint firstAttribute="trailing" secondItem="hZg-i2-C7V" secondAttribute="trailing" constant="126" id="5WI-zk-7jJ"/>
                             <constraint firstItem="hZg-i2-C7V" firstAttribute="top" secondItem="m2S-Jp-Qdl" secondAttribute="top" constant="20" symbolic="YES" id="Ita-W2-oDr"/>
-                            <constraint firstItem="hZg-i2-C7V" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="5au-qS-4C1" secondAttribute="trailing" symbolic="YES" id="Kpe-nm-dtD"/>
+                            <constraint firstItem="hZg-i2-C7V" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="5au-qS-4C1" secondAttribute="trailing" constant="12" symbolic="YES" id="Kpe-nm-dtD"/>
                             <constraint firstItem="5au-qS-4C1" firstAttribute="leading" secondItem="62C-Fp-lVj" secondAttribute="trailing" constant="12" symbolic="YES" id="McF-tc-tia"/>
+                            <constraint firstItem="ga0-09-WTi" firstAttribute="top" secondItem="2xc-DE-qF4" secondAttribute="bottom" constant="12" id="Nc3-f9-1FY"/>
+                            <constraint firstAttribute="bottom" secondItem="ga0-09-WTi" secondAttribute="bottom" constant="24" id="P21-Kz-FZk"/>
+                            <constraint firstItem="7L9-yh-72s" firstAttribute="leading" secondItem="ga0-09-WTi" secondAttribute="trailing" constant="8" symbolic="YES" id="PpP-UP-iEa"/>
+                            <constraint firstAttribute="trailing" secondItem="7L9-yh-72s" secondAttribute="trailing" constant="34" id="SoO-LL-ELO"/>
                             <constraint firstItem="62C-Fp-lVj" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="34" id="Z0Y-fD-MSm"/>
-                            <constraint firstAttribute="bottom" secondItem="2xc-DE-qF4" secondAttribute="bottom" constant="20" symbolic="YES" id="a4R-R3-1e2"/>
                             <constraint firstItem="2xc-DE-qF4" firstAttribute="top" secondItem="62C-Fp-lVj" secondAttribute="bottom" constant="15" id="an8-Zp-aTX"/>
                             <constraint firstItem="2xc-DE-qF4" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="34" id="cbk-E1-QYS"/>
                             <constraint firstAttribute="trailing" secondItem="2xc-DE-qF4" secondAttribute="trailing" constant="34" id="kL8-2V-bAh"/>
+                            <constraint firstAttribute="bottom" secondItem="7L9-yh-72s" secondAttribute="bottom" constant="20" symbolic="YES" id="os6-lv-1MB"/>
                             <constraint firstItem="2xc-DE-qF4" firstAttribute="top" secondItem="5au-qS-4C1" secondAttribute="bottom" constant="15" id="r0Y-30-Nks"/>
                             <constraint firstItem="62C-Fp-lVj" firstAttribute="top" secondItem="m2S-Jp-Qdl" secondAttribute="top" constant="20" symbolic="YES" id="rQY-YB-gH1"/>
                             <constraint firstItem="5au-qS-4C1" firstAttribute="top" secondItem="m2S-Jp-Qdl" secondAttribute="top" constant="20" symbolic="YES" id="suu-DQ-eya"/>
+                            <constraint firstItem="ga0-09-WTi" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="34" id="tLh-lf-HOF"/>
+                            <constraint firstItem="7L9-yh-72s" firstAttribute="top" secondItem="2xc-DE-qF4" secondAttribute="bottom" constant="8" symbolic="YES" id="wLz-Ko-imf"/>
+                            <constraint firstItem="7L9-yh-72s" firstAttribute="leading" secondItem="ga0-09-WTi" secondAttribute="trailing" constant="8" symbolic="YES" id="ydh-h5-tSb"/>
                         </constraints>
                     </view>
                     <connections>
                         <outlet property="clearLog" destination="hZg-i2-C7V" id="s36-if-gHX"/>
                         <outlet property="log" destination="XqI-e2-GeB" id="dk4-v9-awC"/>
+                        <outlet property="pathField" destination="7L9-yh-72s" id="5Xs-Sq-vwV"/>
+                        <outlet property="pathFielkd" destination="7L9-yh-72s" id="TD7-Oj-Ab7"/>
                         <outlet property="saveLog" destination="5au-qS-4C1" id="dP8-cd-PIv"/>
                         <outlet property="toggleUI" destination="62C-Fp-lVj" id="dl9-D5-lwC"/>
                     </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="75" y="655"/>
+            <point key="canvasLocation" x="75" y="671"/>
         </scene>
     </scenes>
 </document>
