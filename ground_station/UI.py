@@ -507,6 +507,29 @@ class RocketUI(QWidget):
 
 
 
+        # --------------------
+        # Cell Voltage table
+        # --------------------
+        cellvoltage_group = QGroupBox("Cell Voltages")
+
+        cellvoltage_layout = QVBoxLayout()
+
+        self.cellvoltage_table = QTableWidget(0, 2)
+        self.cellvoltage_table.setHorizontalHeaderLabels(["Cell #", "Voltage"])
+        self.cellvoltage_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.cellvoltage_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.cellvoltage_table.verticalHeader().setVisible(False)
+        self.cellvoltage_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        #cellvoltage_group.setFixedHeight(400)
+
+        cellvoltage_layout.addWidget(self.cellvoltage_table)
+
+        cellvoltage_group.setLayout(cellvoltage_layout)
+
+        right_layout.addWidget(cellvoltage_group)
+
+
+
 
         ## Power Protections Status Table
         self.pwrprotecgrp = QGroupBox("Power Protection Status")
@@ -1045,6 +1068,12 @@ class RocketUI(QWidget):
             ["Pwr Temp (°C)",  25,  "-"],
         ]
 
+        cell_voltages_snapshot = [
+            ["#1" , np.round(getattr(self.rocket,"cell_voltages", "-1")[0],2)],
+            ["#2" , np.round(getattr(self.rocket,"cell_voltages", "-1")[1],2)],
+            ["#3" , np.round(getattr(self.rocket,"cell_voltages", "-1")[2],2)],
+        ]
+
         #power_snapshot = power_snapshot_testing
 
         self.telemetry_table.setRowCount(len(snapshot))
@@ -1066,6 +1095,16 @@ class RocketUI(QWidget):
                 self.telemetry_table.item(0,0).setFont(font)
                 self.telemetry_table.item(0,1).setFont(font)
                 # PLACEHOLDER FOR COLORING THE STATE CELL 
+
+
+        self.cellvoltage_table.setRowCount(len(cell_voltages_snapshot))
+        for row, (k, v) in enumerate(cell_voltages_snapshot):
+            item0 = QTableWidgetItem(str(display_val))
+            item0.setTextAlignment(Qt.AlignCenter)
+            item1 = QTableWidgetItem(str(k))
+            item1.setTextAlignment(Qt.AlignCenter)
+            self.cellvoltage_table.setItem(row, 0, item1)
+            self.cellvoltage_table.setItem(row, 1, item0)
 
         self.gps_table.setRowCount(len(GPS_snapshot))
         for row, (k, v) in enumerate(GPS_snapshot.items()):
@@ -1857,6 +1896,7 @@ class RocketUI(QWidget):
             return 100 # unknown.
 
 def main():
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling);
     app = QApplication(sys.argv)
     font = QFont()
     font.setPointSize(10)
