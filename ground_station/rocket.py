@@ -358,9 +358,8 @@ class rocket:
                     str(self.state),
                     self.pktnum,
                     self.rssi,
-                    #Todo: THESE DON'T EXIST
-                    #self.armed_pyros,
-                    #self.fired_pyros,
+                    self.armed,
+                    self.fired,
                     self.badpackets,
                     self.rxrssi,
                     self.accel_integrated_velo,
