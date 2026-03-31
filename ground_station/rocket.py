@@ -190,8 +190,6 @@ class rocket:
             if chksum != packet[127]:
                 flag_bad_packet = True
             
-            #to-do: still store packets with failed checksum somewhere
-
             """
             Parse pyros
             For each pyro:
@@ -200,171 +198,338 @@ class rocket:
                 2 = Connected
                 3 = Fired Successfully
             """
-            pyro_info = packet[0] + (packet[1] << 8)
-            for i in range(0, 6):
-                self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
-            
-            armed = packet[2]
-            for i in range(0, 6):
-                self.armed[i] = (armed >> i) & 0x01
-            
-            fired = packet[3]
-            for i in range(0, 6):
-                self.fired[i] = (fired >> i) & 0x01
+            if not flag_bad_packet:
+                pyro_info = packet[0] + (packet[1] << 8)
+                for i in range(0, 6):
+                    self.pyros[i] = (pyro_info >> (2 * i)) & 0b11
+                
+                armed = packet[2]
+                for i in range(0, 6):
+                    self.armed[i] = (armed >> i) & 0x01
+                
+                fired = packet[3]
+                for i in range(0, 6):
+                    self.fired[i] = (fired >> i) & 0x01
 
-            for i in range(0, 6):
-                self.pyro_resistances[i] = packet[4 + i] / 10
-            
-            #Parse servos
-            #to-do: convert to angles
-            servo_info = 0
-            for i in range(0, 6):
-                servo_info += packet[10 + i] << (8 * i)
+                for i in range(0, 6):
+                    self.pyro_resistances[i] = packet[4 + i] / 10
+                
+                #Parse servos
+                #to-do: convert to angles
+                servo_info = 0
+                for i in range(0, 6):
+                    servo_info += packet[10 + i] << (8 * i)
 
-            for i in range(0, 4):
-                self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
-                func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
-                self.servos_deg[i] = func(self.servos[i])
-                print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
-            
-            #Parse accelerometer
-            self.accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
-            self.accelerometer[1] = int.from_bytes(packet[19:22], byteorder='little', signed=True) / 12800.0 * 9.80665
-            self.accelerometer[2] = int.from_bytes(packet[22:25], byteorder='little', signed=True) / 12800.0 * 9.80665
+                for i in range(0, 4):
+                    self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
+                    func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
+                    self.servos_deg[i] = func(self.servos[i])
+                    print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
+                
+                #Parse accelerometer
+                self.accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
+                self.accelerometer[1] = int.from_bytes(packet[19:22], byteorder='little', signed=True) / 12800.0 * 9.80665
+                self.accelerometer[2] = int.from_bytes(packet[22:25], byteorder='little', signed=True) / 12800.0 * 9.80665
 
-            #Parse gyro
-            self.gyro[0] = struct.unpack("<h", packet[25:27])[0] * 0.03051757812
-            self.gyro[1] = struct.unpack("<h", packet[27:29])[0] * -0.03051757812
-            self.gyro[2] = struct.unpack("<h", packet[29:31])[0] * 0.03051757812
+                #Parse gyro
+                self.gyro[0] = struct.unpack("<h", packet[25:27])[0] * 0.03051757812
+                self.gyro[1] = struct.unpack("<h", packet[27:29])[0] * -0.03051757812
+                self.gyro[2] = struct.unpack("<h", packet[29:31])[0] * 0.03051757812
 
-            #Parse GPS
-            self.gps_fix = packet[31]
-            self.lat = struct.unpack("<l", packet[32:36])[0] * 1e-7
-            self.lon = struct.unpack("<l", packet[36:40])[0] * 1e-7
-            self.gpsalt = struct.unpack("<f", packet[40:44])[0]
-            self.gps_horiz_prec = struct.unpack("<L", packet[44:48])[0] / 1000
-            self.gps_vert_prec = struct.unpack("<L", packet[48:52])[0] / 1000
-            self.gps_num_sat = packet[52]
+                #Parse GPS
+                self.gps_fix = packet[31]
+                self.lat = struct.unpack("<l", packet[32:36])[0] * 1e-7
+                self.lon = struct.unpack("<l", packet[36:40])[0] * 1e-7
+                self.gpsalt = struct.unpack("<f", packet[40:44])[0]
+                self.gps_horiz_prec = struct.unpack("<L", packet[44:48])[0] / 1000
+                self.gps_vert_prec = struct.unpack("<L", packet[48:52])[0] / 1000
+                self.gps_num_sat = packet[52]
 
-            #Parse barometer
-            C1 = 0xA27A
-            C2 = 0x92E4
-            C3 = 0x6951
-            C4 = 0x61EF
-            C5 = 0x91E3
-            C6 = 0x6FEC
-            self.raw_press = int.from_bytes(packet[53:56], byteorder='little', signed=False)
-            self.raw_temp = int.from_bytes(packet[56:59], byteorder='little', signed=False)
+                #Parse barometer
+                C1 = 0xA27A
+                C2 = 0x92E4
+                C3 = 0x6951
+                C4 = 0x61EF
+                C5 = 0x91E3
+                C6 = 0x6FEC
+                self.raw_press = int.from_bytes(packet[53:56], byteorder='little', signed=False)
+                self.raw_temp = int.from_bytes(packet[56:59], byteorder='little', signed=False)
 
-            #Temperature conversion
-            dT = float(self.raw_temp) - (float(C5) * (1 << 8))
-            TEMP = 2000.0 + dT * float(C6) / float(1 << 23)
-            self.temp = TEMP / 100.0  # °C
+                #Temperature conversion
+                dT = float(self.raw_temp) - (float(C5) * (1 << 8))
+                TEMP = 2000.0 + dT * float(C6) / float(1 << 23)
+                self.temp = TEMP / 100.0  # °C
 
-            #to-do: Pressure/Alt conversion
-            
-            #Parse moving avg height
+                #to-do: Pressure/Alt conversion
+                
+                #Parse moving avg height
 
-            self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+                self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
 
-            #if not self.FUDGED_BARO:
-            #    self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+                #if not self.FUDGED_BARO:
+                #    self.barofilteredalt = struct.unpack("<f", packet[59:63])[0]
 
-            #Parse state
-            self.state = state(packet[63])
+                #Parse state
+                self.state = state(packet[63])
 
-            #Parse Gyro Integrated
-            self.roll_gyro_int = struct.unpack("<f", packet[64:68])[0]
-            self.pitch_gyro_int = struct.unpack("<f", packet[68:72])[0]
-            self.yaw_gyro_int = struct.unpack("<f", packet[72:76])[0]
+                #Parse Gyro Integrated
+                self.roll_gyro_int = struct.unpack("<f", packet[64:68])[0]
+                self.pitch_gyro_int = struct.unpack("<f", packet[68:72])[0]
+                self.yaw_gyro_int = struct.unpack("<f", packet[72:76])[0]
 
-            #Parse Max Alts
-            self.gps_max_alt = struct.unpack("<H", packet[76:78])[0]
-            self.baro_max_alt = struct.unpack("<H", packet[78:80])[0]
-            
-            #Parse Timing
-            self.flight_time = struct.unpack("<L", packet[80:84])[0]
+                #Parse Max Alts
+                self.gps_max_alt = struct.unpack("<H", packet[76:78])[0]
+                self.baro_max_alt = struct.unpack("<H", packet[78:80])[0]
+                
+                #Parse Timing
+                self.flight_time = struct.unpack("<L", packet[80:84])[0]
 
-            #Parse Packet Number
-            self.pktnum = struct.unpack("<H", packet[84:86])[0]
-            
-            #Parse RSSI
-            self.rxrssi = struct.unpack("<b", packet[86:87])[0] - 99
+                #Parse Packet Number
+                self.pktnum = struct.unpack("<H", packet[84:86])[0]
+                
+                #Parse RSSI
+                self.rxrssi = struct.unpack("<b", packet[86:87])[0] - 99
 
-            #Parse BMS
-            for i in range(0, 3):
-                self.cell_voltages[i] = struct.unpack("<h", packet[87 + 2 * i: 89 + 2 * i])[0] / 1000.0
-            self.total_current = struct.unpack("<h", packet[93:95])[0] / -1000.0
-            self.bms_temp = packet[95] / 2
-            self.bms_protection_status = packet[96]
-            self.bms_protections_enabled = packet[97]
+                #Parse BMS
+                for i in range(0, 3):
+                    self.cell_voltages[i] = struct.unpack("<h", packet[87 + 2 * i: 89 + 2 * i])[0] / 1000.0
+                self.total_current = struct.unpack("<h", packet[93:95])[0] / -1000.0
+                self.bms_temp = packet[95] / 2
+                self.bms_protection_status = packet[96]
+                self.bms_protections_enabled = packet[97]
 
-            for i in range(0, 6):
-                self.converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
-                self.converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
-            
-            #Parse Integrated Acceleration
-            self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
+                for i in range(0, 6):
+                    self.converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
+                    self.converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
+                
+                #Parse Integrated Acceleration
+                self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
-            self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * np.cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi
+                self.angleFromVertical = np.arccos(np.cos(self.pitch_gyro_int * np.pi / 180.0) * np.cos(self.yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi
 
 
-            if self.logging:
-                data = [
-                    time.time(),
-                    self.pyros,
-                    self.servos,
-                    self.servos_deg,
-                    self.accelerometer,
-                    self.barofilteredalt,
-                    self.temp,
-                    self.gyro,
-                    self.gps_fix,
-                    self.lat,
-                    self.lon,
-                    self.gpsalt,
-                    self.gps_horiz_prec,
-                    self.gps_vert_prec,
-                    self.gps_num_sat,
-                    self.flight_time,
-                    self.yaw_gyro_int,
-                    self.pitch_gyro_int,
-                    self.roll_gyro_int,
-                    str(self.state),
-                    self.pktnum,
-                    self.rssi,
-                    self.armed,
-                    self.fired,
-                    self.badpackets,
-                    self.rxrssi,
-                    self.accel_integrated_velo,
-                    self.baro_max_alt,
-                    self.gps_max_alt,
-                    self.pyro_resistances,
-                    self.cell_voltages,
-                    self.total_current,
-                    self.converter_voltages,
-                    self.converter_currents,
-                    self.bms_protections_enabled,
-                    self.bms_protection_status,
-                    self.bms_temp,
-                    self.enabled_status,
-                    self.angleFromVertical,
-                    self.gnd_lat,
-                    self.gnd_lon,
-                    self.gnd_fix,
-                    self.gnd_alt
-                ]
-                if flag_bad_packet:
+                if self.logging:
+                    data = [
+                        time.time(),
+                        self.pyros,
+                        self.servos,
+                        self.servos_deg,
+                        self.accelerometer,
+                        self.barofilteredalt,
+                        self.temp,
+                        self.gyro,
+                        self.gps_fix,
+                        self.lat,
+                        self.lon,
+                        self.gpsalt,
+                        self.gps_horiz_prec,
+                        self.gps_vert_prec,
+                        self.gps_num_sat,
+                        self.flight_time,
+                        self.yaw_gyro_int,
+                        self.pitch_gyro_int,
+                        self.roll_gyro_int,
+                        str(self.state),
+                        self.pktnum,
+                        self.rssi,
+                        self.armed,
+                        self.fired,
+                        self.badpackets,
+                        self.rxrssi,
+                        self.accel_integrated_velo,
+                        self.baro_max_alt,
+                        self.gps_max_alt,
+                        self.pyro_resistances,
+                        self.cell_voltages,
+                        self.total_current,
+                        self.converter_voltages,
+                        self.converter_currents,
+                        self.bms_protections_enabled,
+                        self.bms_protection_status,
+                        self.bms_temp,
+                        self.enabled_status,
+                        self.angleFromVertical,
+                        self.gnd_lat,
+                        self.gnd_lon,
+                        self.gnd_fix,
+                        self.gnd_alt
+                    ]
+                    self.csv_writer.writerow(data)
+                    self.file.flush()
+                    os.fsync(self.file.fileno())
+
+            else: # Bad Packet
+                pyro_info = packet[0] + (packet[1] << 8)
+                pyros = [0,0,0,0,0,0]
+                for i in range(0, 6):
+                    pyros[i] = (pyro_info >> (2 * i)) & 0b11
+                
+                armed0 = packet[2]
+                armed = [0,0,0,0,0,0]
+                for i in range(0, 6):
+                    armed[i] = (armed0 >> i) & 0x01
+                
+                fired0 = packet[3]
+                fired = [0,0,0,0,0,0]
+                for i in range(0, 6):
+                    fired[i] = (fired0 >> i) & 0x01
+
+                pyro_resistances = [0,0,0,0,0,0]
+                for i in range(0, 6):
+                    pyro_resistances[i] = packet[4 + i] / 10
+                
+                #Parse servos
+                servo_info = 0
+                for i in range(0, 6):
+                    servo_info += packet[10 + i] << (8 * i)
+
+                servos = [0,0,0,0]
+                servos_deg = [0,0,0,0]
+                for i in range(0, 4):
+                    servos[i] = (servo_info >> (12 * i)) & 0xFFF
+                    func = microsecToDeg_airbrakes if i in [0,1] else microsecToDeg_rollCtrl
+                    servos_deg[i] = func(servos[i])
+                    print("[RKT] [badpacket] read servo {} to degrees {}".format(i,servos_deg[i]))
+                
+                #Parse accelerometer
+                accelerometer = [0,0,0]
+                accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
+                accelerometer[1] = int.from_bytes(packet[19:22], byteorder='little', signed=True) / 12800.0 * 9.80665
+                accelerometer[2] = int.from_bytes(packet[22:25], byteorder='little', signed=True) / 12800.0 * 9.80665
+
+                #Parse gyro
+                gyro = [0,0,0]
+                gyro[0] = struct.unpack("<h", packet[25:27])[0] * 0.03051757812
+                gyro[1] = struct.unpack("<h", packet[27:29])[0] * -0.03051757812
+                gyro[2] = struct.unpack("<h", packet[29:31])[0] * 0.03051757812
+
+                #Parse GPS
+                gps_fix = packet[31]
+                lat = struct.unpack("<l", packet[32:36])[0] * 1e-7
+                lon = struct.unpack("<l", packet[36:40])[0] * 1e-7
+                gpsalt = struct.unpack("<f", packet[40:44])[0]
+                gps_horiz_prec = struct.unpack("<L", packet[44:48])[0] / 1000
+                gps_vert_prec = struct.unpack("<L", packet[48:52])[0] / 1000
+                gps_num_sat = packet[52]
+
+                #Parse barometer
+                C1 = 0xA27A
+                C2 = 0x92E4
+                C3 = 0x6951
+                C4 = 0x61EF
+                C5 = 0x91E3
+                C6 = 0x6FEC
+                raw_press = int.from_bytes(packet[53:56], byteorder='little', signed=False)
+                raw_temp = int.from_bytes(packet[56:59], byteorder='little', signed=False)
+
+                #Temperature conversion
+                dT = float(raw_temp) - (float(C5) * (1 << 8))
+                TEMP = 2000.0 + dT * float(C6) / float(1 << 23)
+                temp = TEMP / 100.0  # °C
+
+                #to-do: Pressure/Alt conversion
+                
+                #Parse moving avg height
+
+                barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+
+                #if not FUDGED_BARO:
+                #    barofilteredalt = struct.unpack("<f", packet[59:63])[0]
+
+                #Parse state
+                state = state(packet[63])
+
+                #Parse Gyro Integrated
+                roll_gyro_int = struct.unpack("<f", packet[64:68])[0]
+                pitch_gyro_int = struct.unpack("<f", packet[68:72])[0]
+                yaw_gyro_int = struct.unpack("<f", packet[72:76])[0]
+
+                #Parse Max Alts
+                gps_max_alt = struct.unpack("<H", packet[76:78])[0]
+                baro_max_alt = struct.unpack("<H", packet[78:80])[0]
+                
+                #Parse Timing
+                flight_time = struct.unpack("<L", packet[80:84])[0]
+
+                #Parse Packet Number
+                pktnum = struct.unpack("<H", packet[84:86])[0]
+                
+                #Parse RSSI
+                rxrssi = struct.unpack("<b", packet[86:87])[0] - 99
+
+                #Parse BMS
+                cell_voltages = [0,0,0]
+                for i in range(0, 3):
+                    cell_voltages[i] = struct.unpack("<h", packet[87 + 2 * i: 89 + 2 * i])[0] / 1000.0
+                total_current = struct.unpack("<h", packet[93:95])[0] / -1000.0
+                bms_temp = packet[95] / 2
+                bms_protection_status = packet[96]
+                bms_protections_enabled = packet[97]
+
+                converter_currents = [0,0,0,0,0,0]
+                converter_voltages = [0,0,0,0,0,0]
+                for i in range(0, 6):
+                    converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
+                    converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
+                
+                #Parse Integrated Acceleration
+                accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
+
+                angleFromVertical = np.arccos(np.cos(pitch_gyro_int * np.pi / 180.0) * np.cos(yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi
+
+
+                if self.logging:
+                    data = [
+                        time.time(),
+                        pyros,
+                        servos,
+                        servos_deg,
+                        accelerometer,
+                        barofilteredalt,
+                        temp,
+                        gyro,
+                        gps_fix,
+                        lat,
+                        lon,
+                        gpsalt,
+                        gps_horiz_prec,
+                        gps_vert_prec,
+                        gps_num_sat,
+                        flight_time,
+                        yaw_gyro_int,
+                        pitch_gyro_int,
+                        roll_gyro_int,
+                        str(state),
+                        pktnum,
+                        rssi,
+                        armed,
+                        fired,
+                        badpackets,
+                        rxrssi,
+                        accel_integrated_velo,
+                        baro_max_alt,
+                        gps_max_alt,
+                        pyro_resistances,
+                        cell_voltages,
+                        total_current,
+                        converter_voltages,
+                        converter_currents,
+                        bms_protections_enabled,
+                        bms_protection_status,
+                        bms_temp,
+                        enabled_status,
+                        angleFromVertical,
+                        gnd_lat,
+                        gnd_lon,
+                        gnd_fix,
+                        gnd_alt
+                    ]
                     self.csv_writer_badpackets.writerow(data)
                     self.file_badpackets.flush()
                     os.fsync(self.file_badpackets.fileno())
                     if self.debug:
                         print("[RKT] WARNING Bad Packet Received, storing.")
-                else:
-                    self.csv_writer.writerow(data)
-                    self.file.flush()
-                    os.fsync(self.file.fileno())
+
             return True
 
     
