@@ -241,7 +241,7 @@ class rocket:
             self.gps_fix = packet[31]
             self.lat = struct.unpack("<l", packet[32:36])[0] * 1e-7
             self.lon = struct.unpack("<l", packet[36:40])[0] * 1e-7
-            self.gpsalt = struct.unpack("<l", packet[40:44])[0] / 1000
+            self.gpsalt = struct.unpack("<f", packet[40:44])[0]
             self.gps_horiz_prec = struct.unpack("<L", packet[44:48])[0] / 1000
             self.gps_vert_prec = struct.unpack("<L", packet[48:52])[0] / 1000
             self.gps_num_sat = packet[52]
