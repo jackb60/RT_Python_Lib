@@ -36,24 +36,17 @@ class rocket:
         self.barofilteredvelo = 0  #m/s
         self.temp = 0 #deg C # from baro
         self.gyro = [0, 0, 0] #x, y, z, deg/s
-        self.magnetometer = [0, 0, 0] #x, y, z, Gauss
-        self.heading = 0 #deg
         self.gps_fix = False
         self.lat = 0
         self.lon = 0
         self.gpsalt = 0 #m
-        self.pdop = 0
-        self.hdop = 0
-        self.vdop = 0
         self.gps_horiz_prec = -1
         self.gps_vert_prec = -1
         self.gps_num_sat = 0
         self.flight_time = 0 #msec
-        self.last_rec = 0 #msec
         self.yaw_gyro_int = 0 #deg
         self.pitch_gyro_int = 0 #deg
         self.roll_gyro_int = 0 #deg
-        self.batt_voltage = 0 #V
         self.state = state.GROUND_TESTING
         self.pktnum = 0
         self.rssi = 0 #dBm
@@ -114,29 +107,20 @@ class rocket:
         "servos",
         "servos_deg",
         "accelerometer",
-        "barometer",
         "barofilteredalt",
-        "barofilteredvelo",
         "temp",
         "gyro",
-        "magnetometer",
-        "heading",
         "gps_fix",
         "lat",
         "lon",
         "gpsalt",
-        "pdop",
-        "hdop",
-        "vdop",
         "gps_horiz_prec",
         "gps_vert_prec",
         "gps_num_sat",
         "flight_time",
-        "last_rec",
         "yaw_gyro_int",
         "pitch_gyro_int",
         "roll_gyro_int",
-        "batt_voltage",
         "state",
         "pktnum",
         "rssi",
@@ -332,29 +316,20 @@ class rocket:
                     self.servos,
                     self.servos_deg,
                     self.accelerometer,
-                    self.barometer,
                     self.barofilteredalt,
-                    self.barofilteredvelo,
                     self.temp,
                     self.gyro,
-                    self.magnetometer,
-                    self.heading,
                     self.gps_fix,
                     self.lat,
                     self.lon,
                     self.gpsalt,
-                    self.pdop,
-                    self.hdop,
-                    self.vdop,
                     self.gps_horiz_prec,
                     self.gps_vert_prec,
                     self.gps_num_sat,
                     self.flight_time,
-                    self.last_rec,
                     self.yaw_gyro_int,
                     self.pitch_gyro_int,
                     self.roll_gyro_int,
-                    self.batt_voltage,
                     str(self.state),
                     self.pktnum,
                     self.rssi,
