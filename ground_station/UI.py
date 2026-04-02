@@ -1896,7 +1896,7 @@ class RocketUI(QWidget):
             return 100 # unknown.
 
 def main():
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling);
+    #QApplication.setAttribute(Qt.AA_EnableHighDpiScaling);
     app = QApplication(sys.argv)
     font = QFont()
     font.setPointSize(10)
