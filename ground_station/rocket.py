@@ -437,7 +437,7 @@ class rocket:
                 #    barofilteredalt = struct.unpack("<f", packet[59:63])[0]
 
                 #Parse state
-                state = state(packet[63])
+                state0 = state(packet[63])
 
                 #Parse Gyro Integrated
                 roll_gyro_int = struct.unpack("<f", packet[64:68])[0]
@@ -499,7 +499,7 @@ class rocket:
                         yaw_gyro_int,
                         pitch_gyro_int,
                         roll_gyro_int,
-                        str(state),
+                        str(state0),
                         pktnum,
                         rssi,
                         armed,
