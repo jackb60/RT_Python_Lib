@@ -10,6 +10,7 @@ from matplotlib import rcParams
 rcParams['font.family'] = 'serif'
 rcParams['text.usetex'] = True
 rcParams['font.size'] = 10
+rcParams['text.usetex'] = False
 
 
 blue = "#08357E"
@@ -22,7 +23,7 @@ import matplotlib as mpl
 rcParams['axes.prop_cycle'] = mpl.cycler(color=[blue,red,green,lblue,lred,orange]) 
 
 
-TELEM_FILE_TO_PROC = "DUMMY_DATA_TEST.csv"
+TELEM_FILE_TO_PROC = "GROUND_TEST_3_31.csv"
 pathToTelems = "../telemetry/"
 
 df = pd.read_csv(pathToTelems+TELEM_FILE_TO_PROC)

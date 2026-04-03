@@ -500,10 +500,13 @@ class RocketUI(QWidget):
         self.servo_table.setEditTriggers(QTableWidget.NoEditTriggers)
         #servo_group.setFixedHeight(400)
         if not IS_MACOS:
-            if getpass.getuser() != 'mdn':
-                pass#cellvoltage_group.setFixedHeight(200)
-            else:
+            if getpass.getuser() == 'mdn':
                 servo_group.setFixedHeight(400)
+            if getpass.getuser() == 'jackb':
+                servo_group.setFixedHeight(200)
+            else:
+                pass
+                #servo_group.setFixedHeight(400)
 
         servo_layout.addWidget(self.servo_table)
 
@@ -563,8 +566,15 @@ class RocketUI(QWidget):
         self.power_protec_table.setVerticalHeaderLabels(["Enabled","Triggered"])
         self.power_protec_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.power_protec_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        if IS_MACOS:
+            self.pwrprotecgrp.setFixedHeight(150)
+        elif getpass.getuser() == 'mdn':
+            self.pwrprotecgrp.setFixedHeight(350)
+        elif getpass.getuser() == 'jackb':
+            self.pwrprotecgrp.setFixedHeight(200)
+        else:
+            self.pwrprotecgrp.setFixedHeight(350)
 
-        self.pwrprotecgrp.setFixedHeight(150 if IS_MACOS else (200 if getpass.getuser() != 'mdn' else 350))
         vl.addWidget(self.power_protec_table)
         self.pwrprotecgrp.setLayout(vl)
         right_layout.addWidget(self.pwrprotecgrp)
