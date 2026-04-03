@@ -175,7 +175,7 @@ class rocket:
             packet = self.ser.read(128)
             gnd_info = self.ser.read(14)
             self.rssi = struct.unpack("<b", gnd_info[0:1])[0] - 99
-            self.gnd_fix = gnd_info[1]
+            self.gnd_fix = True if (gnd_info[1] == 1) else False
             self.gnd_lat = np.round(struct.unpack("<l", gnd_info[2:6])[0] * 1e-7,5)
             self.gnd_lon = np.round(struct.unpack("<l", gnd_info[6:10])[0] * 1e-7,5)
             self.gnd_alt = np.round(struct.unpack("<l", gnd_info[10:14])[0] / 1000,2)
@@ -224,7 +224,7 @@ class rocket:
                     self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
                     func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
                     self.servos_deg[i] = np.round(func(self.servos[i]),2)
-                    print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
+                    #print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
                 
                 #Parse accelerometer
                 self.accelerometer[0] = int.from_bytes(packet[16:19], byteorder='little', signed=True) / 12800.0 * 9.80665
@@ -301,6 +301,10 @@ class rocket:
                 for i in range(0, 6):
                     self.converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
                     self.converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
+
+                correct_voltages = [3,3.3,5,7.4,8.4,28]
+                for i in range(0, 6):
+                    self.enabled_status[i] = np.abs(correct_voltages[i] - self.converter_voltages[i]) < 1
                 
                 #Parse Integrated Acceleration
                 self.accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
@@ -387,7 +391,7 @@ class rocket:
                 servos_deg = [0,0,0,0]
                 for i in range(0, 4):
                     servos[i] = (servo_info >> (12 * i)) & 0xFFF
-                    func = microsecToDeg_airbrakes if i in [0,1] else microsecToDeg_rollCtrl
+                    func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
                     servos_deg[i] = func(servos[i])
                     print("[RKT] [badpacket] read servo {} to degrees {}".format(i,servos_deg[i]))
                 
@@ -727,9 +731,11 @@ class rocket:
         # [3v_enabled, 3p3v_enabled, 5v_enabled, 7v4_enabled, 8v4_enabled, 28v_enabled]
         data = bytearray(16)
         data[0] = 0xAA
-        for i in converters:    
-            data[12] |= 0x01 << i
+        for i in range(len(converters)):    
+            if converters[i]:
+                data[12] |= 0x01 << i
         data[13] = 0x15
+        print("[RKT] [Debug] data[12]: {}".format(data[12]))
         struct.pack_into(">H", data, 14, self.calc_checksum(data))
         self.ser.write(data)
 

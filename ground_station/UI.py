@@ -554,7 +554,8 @@ class RocketUI(QWidget):
         label = QLabel("BMS Protections Enabled: ")
         self.bms_protec_checkbox = QCheckBox()
         self.bms_protec_checkbox.setChecked(True)
-        self.bms_protec_checkbox.stateChanged.connect(self.toggle_bms_protec)
+        self.bms_protec_checkbox.setEnabled(False)
+        #self.bms_protec_checkbox.stateChanged.connect(self.toggle_bms_protec)
 
         rll.addWidget(label)
         rll.addWidget(self.bms_protec_checkbox)
@@ -614,10 +615,15 @@ class RocketUI(QWidget):
         self.status_label  = QLabel("Status: Ready")
         self.status_label2 = QLabel("Polling Status: Not Polling")
         self.status_label3 = QLabel("Current time: ")
-        final_layout.addWidget(self.status_label)
-        final_layout.addWidget(self.status_label2)
-        final_layout.addWidget(self.status_label3)
+        self.status_label.setAlignment(Qt.AlignLeft)
+        self.status_label2.setAlignment(Qt.AlignCenter)
+        self.status_label3.setAlignment(Qt.AlignRight)
 
+        status_row = QHBoxLayout()
+        status_row.addWidget(self.status_label, 1)
+        status_row.addWidget(self.status_label2, 1)
+        status_row.addWidget(self.status_label3, 1)
+        final_layout.addLayout(status_row)
 
         self.setLayout(final_layout)
 
@@ -1087,11 +1093,15 @@ class RocketUI(QWidget):
             ["28V",  20,  0],
             ["Pwr Temp (°C)",  25,  "-"],
         ]
-
+        stuffs = [0,0,0]
+        try:
+            stuffs = self.rocket.cell_voltages
+        except:
+            pass
         cell_voltages_snapshot = [
-            ["#1" , np.round(getattr(self.rocket,"cell_voltages", "-1")[0],2)],
-            ["#2" , np.round(getattr(self.rocket,"cell_voltages", "-1")[1],2)],
-            ["#3" , np.round(getattr(self.rocket,"cell_voltages", "-1")[2],2)],
+            ["#1" , np.round(stuffs[0],4)],
+            ["#2" , np.round(stuffs[1],4)],
+            ["#3" , np.round(stuffs[2],4)],
         ]
 
         #power_snapshot = power_snapshot_testing
@@ -1118,13 +1128,21 @@ class RocketUI(QWidget):
 
 
         self.cellvoltage_table.setRowCount(len(cell_voltages_snapshot))
-        for row, (k, v) in enumerate(cell_voltages_snapshot):
-            item0 = QTableWidgetItem(str(display_val))
+        for row, k in enumerate(cell_voltages_snapshot):
+            item0 = QTableWidgetItem("#" + str(row+1))
             item0.setTextAlignment(Qt.AlignCenter)
-            item1 = QTableWidgetItem(str(k))
+            item1 = QTableWidgetItem(str(k[1]))
             item1.setTextAlignment(Qt.AlignCenter)
-            self.cellvoltage_table.setItem(row, 0, item1)
-            self.cellvoltage_table.setItem(row, 1, item0)
+            self.cellvoltage_table.setItem(row, 0, item0)
+            self.cellvoltage_table.setItem(row, 1, item1)
+            if k[1] > 3.7:
+                self.cellvoltage_table.item(row,1).setBackground(QBrush(Qt.darkGreen))
+            elif k[1] > 3.5:
+                col = QColor(Qt.yellow)
+                col.setRgb(150, 150, 2)
+                self.cellvoltage_table.item(row,1).setBackground(QBrush(col))
+            else:
+                self.cellvoltage_table.item(row,1).setBackground(QBrush(Qt.red))
 
         self.gps_table.setRowCount(len(GPS_snapshot))
         for row, (k, v) in enumerate(GPS_snapshot.items()):
@@ -1401,14 +1419,16 @@ class RocketUI(QWidget):
             color = Qt.darkGreen if val == 1 else Qt.red
             item = QTableWidgetItem(str(val))
             item.setTextAlignment(Qt.AlignCenter)
-            item.setBackground(QColor(color))
+            if 7-i not in [1,2,3,4]:
+                item.setBackground(QColor(color))
             self.power_protec_table.setItem(0,7-i,item)
         for i in range(8):
             val = int(arrs[1,i])
             color = Qt.darkGreen if val == 0 else Qt.red
             item = QTableWidgetItem(str(val))
             item.setTextAlignment(Qt.AlignCenter)
-            item.setBackground(QColor(color))
+            if 7-i  not in [1,2,3,4]:
+                item.setBackground(QColor(color))
             self.power_protec_table.setItem(1,7-i,item)
 
 
