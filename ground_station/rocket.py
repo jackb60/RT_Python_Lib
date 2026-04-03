@@ -278,8 +278,8 @@ class rocket:
                 self.yaw_gyro_int = struct.unpack("<f", packet[72:76])[0]
 
                 #Parse Max Alts
-                self.gps_max_alt = struct.unpack("<H", packet[76:78])[0]
-                self.baro_max_alt = struct.unpack("<H", packet[78:80])[0]
+                self.baro_max_alt = struct.unpack("<H", packet[76:78])[0]
+                self.gps_max_alt = struct.unpack("<H", packet[78:80])[0]
                 
                 #Parse Timing
                 self.flight_time = struct.unpack("<L", packet[80:84])[0]
