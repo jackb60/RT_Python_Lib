@@ -30,6 +30,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from datetime import datetime
+import getpass
 
 
 from pointer import pointer
@@ -498,6 +499,11 @@ class RocketUI(QWidget):
         self.servo_table.verticalHeader().setVisible(False)
         self.servo_table.setEditTriggers(QTableWidget.NoEditTriggers)
         #servo_group.setFixedHeight(400)
+        if not IS_MACOS:
+            if getpass.getuser() != 'mdn':
+                pass#cellvoltage_group.setFixedHeight(200)
+            else:
+                servo_group.setFixedHeight(400)
 
         servo_layout.addWidget(self.servo_table)
 
@@ -520,7 +526,11 @@ class RocketUI(QWidget):
         self.cellvoltage_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.cellvoltage_table.verticalHeader().setVisible(False)
         self.cellvoltage_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        #cellvoltage_group.setFixedHeight(400)
+        if not IS_MACOS:
+            if getpass.getuser() != 'mdn':
+                cellvoltage_group.setFixedHeight(200)
+            else:
+                cellvoltage_group.setFixedHeight(300)
 
         cellvoltage_layout.addWidget(self.cellvoltage_table)
 
@@ -554,7 +564,7 @@ class RocketUI(QWidget):
         self.power_protec_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.power_protec_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        self.pwrprotecgrp.setFixedHeight(150 if IS_MACOS else 350)
+        self.pwrprotecgrp.setFixedHeight(150 if IS_MACOS else (200 if getpass.getuser() != 'mdn' else 350))
         vl.addWidget(self.power_protec_table)
         self.pwrprotecgrp.setLayout(vl)
         right_layout.addWidget(self.pwrprotecgrp)
@@ -850,7 +860,7 @@ class RocketUI(QWidget):
 
 
     def connect_serial_antenna(self):
-        port = self.port_combo.currentText()
+        port = self.port_combo_antenna.currentText()
         if not port or port == "No ports":
             QMessageBox.warning(self, "No Port", "No serial port selected.")
             return
