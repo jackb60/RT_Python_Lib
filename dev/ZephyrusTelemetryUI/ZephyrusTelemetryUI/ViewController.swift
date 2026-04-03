@@ -8,7 +8,7 @@
 import Cocoa
 import UniformTypeIdentifiers
 
-class ViewController: NSViewController, NSWindowDelegate {
+class ViewController: NSViewController, NSWindowDelegate, NSTextFieldDelegate {
 
     private var scriptProcess: Process?
     private var outputPipe: Pipe?
@@ -22,6 +22,8 @@ class ViewController: NSViewController, NSWindowDelegate {
     
     //@IBOutlet weak var log: NSTextField!
     @IBOutlet var log: NSTextView!
+    
+    private let pathDefaultsKey = "LastPathFieldValue"
     
     @IBAction func saveLogAction(_ sender: Any) {
         let textToSave = log?.string ?? ""
@@ -81,6 +83,9 @@ class ViewController: NSViewController, NSWindowDelegate {
             process.standardOutput = pipe
             process.standardError = pipe
             process.currentDirectoryURL = URL(fileURLWithPath: pathField.stringValue)
+            
+            // Persist the chosen path
+            savePathToDefaults()
 
             var env = ProcessInfo.processInfo.environment
             env["PYTHONUNBUFFERED"] = "1"
@@ -122,7 +127,15 @@ class ViewController: NSViewController, NSWindowDelegate {
         }
     }
     
+    private func savePathToDefaults() {
+        let value = pathField.stringValue
+        UserDefaults.standard.set(value, forKey: pathDefaultsKey)
+    }
     
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let textField = obj.object as? NSTextField, textField == pathField else { return }
+        savePathToDefaults()
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -130,6 +143,12 @@ class ViewController: NSViewController, NSWindowDelegate {
         // Do any additional setup after loading the view.
         DispatchQueue.main.async { [weak self] in
             self?.view.window?.delegate = self
+        }
+
+        // Configure pathField delegate and load last saved value
+        pathField.delegate = self
+        if let savedPath = UserDefaults.standard.string(forKey: pathDefaultsKey), !savedPath.isEmpty {
+            pathField.stringValue = savedPath
         }
     }
 
@@ -140,6 +159,7 @@ class ViewController: NSViewController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        savePathToDefaults()
         NSApp.terminate(nil)
     }
 
