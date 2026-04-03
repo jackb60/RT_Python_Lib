@@ -5,12 +5,16 @@ import matplotlib.pyplot as plt
 import scipy.optimize as spopt
 import ast
 
+
 # For LaTeX-powered plotting:
 from matplotlib import rcParams
 rcParams['font.family'] = 'serif'
 rcParams['text.usetex'] = True
 rcParams['font.size'] = 10
-rcParams['text.usetex'] = False
+if getpass.getuser() == 'mdn':
+	rcParams['text.usetex'] = True
+else:
+	rcParams['text.usetex'] = False
 
 
 blue = "#08357E"

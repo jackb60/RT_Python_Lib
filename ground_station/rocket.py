@@ -223,7 +223,7 @@ class rocket:
                 for i in range(0, 4):
                     self.servos[i] = (servo_info >> (12 * i)) & 0xFFF
                     func = self.microsecToDeg_airbrakes if i in [0,1] else self.microsecToDeg_rollCtrl
-                    self.servos_deg[i] = func(self.servos[i])
+                    self.servos_deg[i] = np.round(func(self.servos[i]),2)
                     print("[RKT] read servo {} to degrees {}".format(i,self.servos_deg[i]))
                 
                 #Parse accelerometer
