@@ -18,7 +18,8 @@ from PyQt5.QtWidgets import (
     QHeaderView,
     QFrame,
     QMenuBar,
-    QAction
+    QAction,
+    QAbstractItemView
 )
 from PyQt5.QtGui import QFont, QKeySequence
 import time 
@@ -160,6 +161,7 @@ class RocketUI(QWidget):
         row = QHBoxLayout()
         
         self.telemetry_table = QTableWidget(0, 2)
+        self.telemetry_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.telemetry_table.setHorizontalHeaderLabels(["Field", "Value"])
         self.telemetry_table.verticalHeader().setVisible(False)
         self.telemetry_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -171,6 +173,7 @@ class RocketUI(QWidget):
         row.addWidget(separator)
 
         self.gps_table = QTableWidget(0, 2)
+        self.gps_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.gps_table.setHorizontalHeaderLabels(["Field", "Value"])
         self.gps_table.verticalHeader().setVisible(False)
         self.gps_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -182,6 +185,7 @@ class RocketUI(QWidget):
         row.addWidget(separator)
 
         self.power_table = QTableWidget(0, 5)
+        self.power_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.power_table.setHorizontalHeaderLabels(["Name","Req. Stat.", "Enabled", "Voltage", "Current"])
         self.power_table.verticalHeader().setVisible(False)
         self.power_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -230,13 +234,80 @@ class RocketUI(QWidget):
         hl2 = QHBoxLayout()
         l = QLabel("                    VTX Power Setting: ")
         hl2.addWidget(l)
-        self.vtxPower_btn = QComboBox()
-        self.vtxPower_btn.addItem("1 W")
-        self.vtxPower_btn.addItem("3 W")
-        self.vtxPower_btn.addItem("5 W")
-        self.vtxPower_btn.addItem("8 W")
-        self.vtxPower_btn.currentIndexChanged.connect(self.update_vtx_power)
-        hl2.addWidget(self.vtxPower_btn)
+        """self.vtxPower_btn = QComboBox()
+                                self.vtxPower_btn.addItem("1 W")
+                                self.vtxPower_btn.addItem("3 W")
+                                self.vtxPower_btn.addItem("5 W")
+                                self.vtxPower_btn.addItem("8 W")
+                                self.vtxPower_btn.currentIndexChanged.connect(self.update_vtx_power)
+                                hl2.addWidget(self.vtxPower_btn)"""
+        self.vtxPower_group = QButtonGroup(self)
+        self.vtxPower_group.setExclusive(True)
+
+        self.vtxPower_widget = QWidget()
+        self.vtxPower_widget.setObjectName("vtxSegment")
+        self.vtxPower_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        vtx_layout = QHBoxLayout(self.vtxPower_widget)
+        vtx_layout.setContentsMargins(3, 3, 3, 3)
+        vtx_layout.setSpacing(2)
+
+        for i, label in enumerate(("1 W", "3 W", "5 W", "8 W")):
+            btn = QToolButton(self.vtxPower_widget)
+            btn.setText(label)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFocusPolicy(Qt.NoFocus)
+            btn.setAutoRaise(True)
+            btn.setMinimumSize(56, 28)
+            btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+            self.vtxPower_group.addButton(btn, i)
+            vtx_layout.addWidget(btn)
+
+        self.vtxPower_group.buttonClicked[int].connect(self.update_vtx_power)
+        self.vtxPower_group.button(0).setChecked(True)
+
+        self.vtxPower_widget.setStyleSheet("""
+        QWidget#vtxSegment {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 11px;
+        }
+
+        QWidget#vtxSegment QToolButton {
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0 10px;
+            min-width: 42px;
+            min-height: 24px;
+            border-radius: 8px;
+        }
+
+        QWidget#vtxSegment QToolButton:hover:!checked {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.92);
+        }
+
+        QWidget#vtxSegment QToolButton:checked {
+            background-color: #0A84FF;
+            color: white;
+        }
+
+        QWidget#vtxSegment QToolButton:pressed:checked {
+            background-color: #0077ED;
+        }
+
+        QWidget#vtxSegment QToolButton:pressed:!checked {
+            background-color: rgba(255, 255, 255, 0.10);
+        }
+        """)
+
+        hl2.addWidget(self.vtxPower_widget, 0, Qt.AlignLeft)
+        #hl2.addStretch()
         hll.addLayout(hl2)
 
         self.safe_group.setLayout(hll)
@@ -456,6 +527,7 @@ class RocketUI(QWidget):
         p_layout = QVBoxLayout()
 
         self.pyro_table = QTableWidget(0, 5)
+        self.pyro_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.pyro_table.setHorizontalHeaderLabels(["Select", "#", "Status", "A/F", "Rstnc."])
         self.pyro_table.verticalHeader().setVisible(False)
         self.pyro_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -493,6 +565,7 @@ class RocketUI(QWidget):
         servo_layout = QVBoxLayout()
 
         self.servo_table = QTableWidget(0, 2)
+        self.servo_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.servo_table.setHorizontalHeaderLabels(["Servo", "Angle"])
         self.servo_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.servo_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -524,6 +597,7 @@ class RocketUI(QWidget):
         cellvoltage_layout = QVBoxLayout()
 
         self.cellvoltage_table = QTableWidget(0, 2)
+        self.cellvoltage_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.cellvoltage_table.setHorizontalHeaderLabels(["Cell #", "Voltage"])
         self.cellvoltage_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.cellvoltage_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -1438,7 +1512,7 @@ class RocketUI(QWidget):
                 [self.chkbx_3V_readonly,self.chkbx_3p3V_readonly,self.chkbx_5V_readonly,self.chkbx_7p4V_readonly,self.chkbx_8p4V_readonly,self.chkbx_28V_readonly]
                 ):
             self.switched_from_polled_telemetry = True
-            chkbx.setChecked(statuses[i])
+            chkbx.setChecked(bool(statuses[i]))
 
 
         requesting_checkboxes = [
@@ -1907,7 +1981,10 @@ class RocketUI(QWidget):
                 "color: rgba(250, 0, 0,0.5); font-weight:bold;" if not connected else
                 "color: rgba(250, 0, 0,1); font-weight:bold;"
                 )
-        self.vtxPower_btn.setEnabled(connected)
+        self.vtxPower_group.button(0).setEnabled(connected)
+        self.vtxPower_group.button(1).setEnabled(connected)
+        self.vtxPower_group.button(2).setEnabled(connected)
+        self.vtxPower_group.button(3).setEnabled(connected)
         self.safe_group.setEnabled(connected)
         self.pwrprotecgrp.setEnabled(connected)
 
