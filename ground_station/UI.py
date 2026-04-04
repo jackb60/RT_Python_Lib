@@ -278,7 +278,7 @@ class RocketUI(QWidget):
         QWidget#vtxSegment QToolButton {
             border: none;
             background: transparent;
-            color: rgba(255, 255, 255, 0.78);
+            /*color: rgba(0, 0, 0, 0.78);*/
             font-size: 13px;
             font-weight: 600;
             padding: 0 10px;
@@ -289,7 +289,7 @@ class RocketUI(QWidget):
 
         QWidget#vtxSegment QToolButton:hover:!checked {
             background-color: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.92);
+            /* color: rgba(0, 255, 255, 0.92);*/
         }
 
         QWidget#vtxSegment QToolButton:checked {
@@ -895,21 +895,24 @@ class RocketUI(QWidget):
     # -------------------------
     def refresh_ports(self):
         print("[UI] Refreshing Ports")
-        self.port_combo.clear()
-        ports = list(serial.tools.list_ports.comports())
-        if not ports:
-            self.port_combo.addItem("No ports")
-        else:
-            for p in ports:
-                self.port_combo.addItem(p.device)
-
-        self.port_combo_antenna.clear()
-        ports = list(serial.tools.list_ports.comports())
-        if not ports:
-            self.port_combo_antenna.addItem("No ports")
-        else:
-            for p in ports:
-                self.port_combo_antenna.addItem(p.device)
+        connected = getattr(self.rocket, "ser", None) is not None
+        connected_antenna = getattr(self.pointer, "isConnected", False)
+        if not connected:
+            self.port_combo.clear()
+            ports = list(serial.tools.list_ports.comports())
+            if not ports:
+                self.port_combo.addItem("No ports")
+            else:
+                for p in ports:
+                    self.port_combo.addItem(p.device)
+        if not connected_antenna:
+            self.port_combo_antenna.clear()
+            ports = list(serial.tools.list_ports.comports())
+            if not ports:
+                self.port_combo_antenna.addItem("No ports")
+            else:
+                for p in ports:
+                    self.port_combo_antenna.addItem(p.device)
 
     def connect_serial(self):
         self.poll_btn.setStyleSheet("color: #538be6; font-weight:bold;")
@@ -1194,7 +1197,30 @@ class RocketUI(QWidget):
             font = QFont()
             font.setBold(True)
             self.telemetry_table.setItem(row, 0, QTableWidgetItem(str(k)))
-            self.telemetry_table.setItem(row, 1, QTableWidgetItem(display_val))
+            item = QTableWidgetItem(str(display_val)) # voltage
+            if row == 1:
+                if snapshot["RSSI"] == 0:
+                    item.setBackground(QColor(Qt.red))
+                elif snapshot["RSSI"] > -50:
+                    item.setBackground(QColor(Qt.darkGreen))
+                elif snapshot["RSSI"] > -80:
+                    color = QColor(Qt.yellow)
+                    color.setRgb(150, 150, 2) # orange
+                    item.setBackground(color)
+                else:
+                    item.setBackground(QColor(Qt.red))
+            if row == 2:
+                if snapshot["RX RSSI"] == 0:
+                    item.setBackground(QColor(Qt.red))
+                elif snapshot["RX RSSI"] > -50:
+                    item.setBackground(QColor(Qt.darkGreen))
+                elif snapshot["RX RSSI"] > -80:
+                    color = QColor(Qt.yellow)
+                    color.setRgb(150, 150, 2) # orange
+                    item.setBackground(color)
+                else:
+                    item.setBackground(QColor(Qt.red))
+            self.telemetry_table.setItem(row, 1, item)
             if row == 0:
                 self.telemetry_table.item(0,0).setFont(font)
                 self.telemetry_table.item(0,1).setFont(font)
@@ -1569,10 +1595,14 @@ class RocketUI(QWidget):
 
 
 
+        if ok:
+            now = datetime.now()
+            seconds = now.second + now.microsecond / 1e6
+            self.status_label2.setText("Telemetry last updated at time {}".format(now.strftime("%Y-%m-%d %H:%M:") + f"{seconds:0.2f}"))
+        else:
+            if self.status_label2.text() == "Polling Status: Not Polling":
+                self.status_label2.setText("Telemetry not yet updated")
 
-        now = datetime.now()
-        seconds = now.second + now.microsecond / 1e6
-        self.status_label2.setText("Telemetry last updated at time {}".format(now.strftime("%Y-%m-%d %H:%M:") + f"{seconds:0.2f}"))
         return True
     
 

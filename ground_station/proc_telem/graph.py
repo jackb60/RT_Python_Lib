@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import ast
 
 # === Load CSV ===
-TELEM_FILE_TO_PROC = "GROUND_TEST_3_31.csv"
+TELEM_FILE_TO_PROC = "telemetry_1775344644.020344.csv"
 pathToTelems = "../telemetry/"
 
 df = pd.read_csv(pathToTelems+TELEM_FILE_TO_PROC)
