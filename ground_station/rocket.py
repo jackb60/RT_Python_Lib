@@ -11,7 +11,7 @@ class state(Enum):
     GROUND_TESTING = 0
     PRE_FLIGHT = 1
     FLIGHT = 2
-    APOGEE = 3
+    POST_APOGEE = 3
     MAIN = 4
     END = 5
 
