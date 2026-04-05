@@ -1,0 +1,11 @@
+[48;2;255;255;255m[0J[38;2;0;0;0m[38;2;0;0;0m[38;2;0;0;0m44100 samples per second.  16 bits per sample.  1 audio channels.
+61214 audio bytes in file.  Duration = 0.7 seconds.
+Fix Bits level = 0
+[38;2;0;192;0mChannel 0: 1200 baud, AFSK 1200 & 2200 Hz, A, 44100 sample rate.
+[38;2;0;192;0m
+DECODED[1] 0:00.686 KR4GAM audio level = 24(7/7)     
+[38;2;0;192;0m[0] KR4GAM>APRS,WIDE1-1,WIDE2-1:!4221.39N/07105.71W-Test beacon<0x0a>
+[38;2;0;0;0m
+
+1 from test.wav
+1 packets decoded in 0.009 seconds.  79.6 x realtime
