@@ -314,6 +314,7 @@ class RocketUI(QWidget):
         vert.addWidget(self.safe_group)
 
         # --- Servo control (safe) ---
+        hll = QHBoxLayout()
         self.servo_group = QGroupBox("Servo Control (safe)")
         whole_servo_layout = QVBoxLayout()
 
@@ -352,7 +353,7 @@ class RocketUI(QWidget):
 
 
         # Airbrakes
-        servoRightLayout.addWidget(QLabel("Angle (Deg):"))
+        servoRightLayout.addWidget(QLabel("Angle (deg):"))
         self.airbrakes_angle_input = QLineEdit("0.0")
         servoRightLayout.addWidget(self.airbrakes_angle_input)
         self.set_airbrakes_btn = QPushButton("Set Airbrakes Ang.")
@@ -364,7 +365,32 @@ class RocketUI(QWidget):
 
         whole_servo_layout.addLayout(servo_layout)
         self.servo_group.setLayout(whole_servo_layout)
-        vert.addWidget(self.servo_group)
+
+
+        self.antennapointer_control_direct_group = QGroupBox("Direct Antenna Pointer Control")
+        gridLayout = QGridLayout()
+        label0 = QLabel("Manual Control")
+        label1 = QLabel("Azimuth: ")
+        label2 = QLabel("Elevation: ")
+        self.azimuthinput = QLineEdit("0.0")
+        self.elevinput = QLineEdit("0.0")
+        self.send_manual_elevAzim_btn = QPushButton("Send")
+        self.send_manual_elevAzim_btn.clicked.connect(self.send_manual_elevAzim)
+
+        gridLayout.addWidget(label0,    0, 0)
+        gridLayout.addWidget(self.send_manual_elevAzim_btn,    0, 1)
+        gridLayout.addWidget(label1,  1, 0)
+        gridLayout.addWidget(label2,  2, 0)
+        gridLayout.addWidget(self.azimuthinput, 1, 1)
+        gridLayout.addWidget(self.elevinput,  2, 1)
+        self.antennapointer_control_direct_group.setLayout(gridLayout)
+
+
+
+
+        hll.addWidget(self.servo_group)
+        hll.addWidget(self.antennapointer_control_direct_group)
+        vert.addLayout(hll)
 
 
         # --- Poll / Log controls ---
@@ -1717,6 +1743,24 @@ class RocketUI(QWidget):
             # unconnected, cannot perform action.
             pass
 
+    def send_manual_elevAzim(self):
+        connected_antenna = getattr(self.pointer, "isConnected", False)
+        if connected_antenna:
+            print("[UI] [PTR] Sending Manual Elevation/Azimuth command.")
+            try:
+                elevToSend = float(self.elevinput.text())
+                azimuthToSend = float(self.azimuthinput.text())
+                print("[UI] [PTR] Elev: {} Azimuth: {}".format(elevToSend,azimuthToSend))
+                self.pointer.send_angles(azimuthToSend,elevToSend)
+                print("[UI] [PTR] Sent Manual Elevation/Azimuth command.")
+                self.status_label.setText("Sent manual elev/azim")
+            except Exception as e:
+                print("[UI] [PTR] FAILED to send Manual Elevation/Azimuth:")
+                print(e)
+                self.status_label.setText("Failed to send manual elev/azim")
+        else:
+            self.status_label.setText("Disconnected: Failed to send manual elev/azim")
+
 
 
     def hold_gnd_gps_fixed(self):
@@ -1990,6 +2034,7 @@ class RocketUI(QWidget):
         self.connect_btn_antenna.setEnabled(not connected_antenna)
         self.disconnect_btn_antenna.setEnabled(connected_antenna)
         self.pointer_group.setEnabled(connected_antenna)
+        self.antennapointer_control_direct_group.setEnabled(connected_antenna)
         self.gndgpsbox.setEnabled(connected)
         self.hold_gnd_gps_fixed_btn.setEnabled(connected_antenna & connected & self.has_polled_at_least_once)
         self.poll_btn.setEnabled(connected)
