@@ -21,6 +21,7 @@ class rocket:
         
         self.pid = [0, 0, 0] #p, i, d
         self.ser = None# serial.Serial('COM11', 115200, timeout=1)
+        self.serial_port = None
         self.logging = False
         self.file = None
         self.file_badpackets = None
@@ -476,10 +477,20 @@ class rocket:
                     converter_voltages[i] = struct.unpack("<h", packet[98 + 2 * i: 100 + 2 * i])[0] * 0.0016
                     converter_currents[i] = struct.unpack("<h", packet[110 + 2 * i: 112 + 2 * i])[0] * 0.000625
                 
+                correct_voltages = [3,3.3,5,7.4,8.4,28]
+                enabled_status = list(self.enabled_status)
+                for i in range(0, 6):
+                    enabled_status[i] = np.abs(correct_voltages[i] - converter_voltages[i]) < 1
+
                 #Parse Integrated Acceleration
                 accel_integrated_velo = struct.unpack("<f", packet[122:126])[0]
 
                 angleFromVertical = np.arccos(np.cos(pitch_gyro_int * np.pi / 180.0) * np.cos(yaw_gyro_int * np.pi / 180)) * 180.0 / np.pi
+
+                gnd_fix = True if (gnd_info[1] == 1) else False
+                gnd_lat = np.round(struct.unpack("<l", gnd_info[2:6])[0] * 1e-7,5)
+                gnd_lon = np.round(struct.unpack("<l", gnd_info[6:10])[0] * 1e-7,5)
+                gnd_alt = np.round(struct.unpack("<l", gnd_info[10:14])[0] / 1000,2)
 
 
                 if self.logging:
@@ -505,10 +516,10 @@ class rocket:
                         roll_gyro_int,
                         str(state0),
                         pktnum,
-                        rssi,
+                        self.rssi,
                         armed,
                         fired,
-                        badpackets,
+                        self.badpackets,
                         rxrssi,
                         accel_integrated_velo,
                         baro_max_alt,
@@ -772,7 +783,6 @@ class rocket:
                     self.accel_integrated_velo, self.baro_max_alt, self.gps_max_alt
                 ]
 """
-
 
 
 

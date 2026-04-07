@@ -273,7 +273,7 @@ class pointer:
 
         lat2 = rocket_lat
         lon2 = rocket_long
-        alt2 = rocket_lat
+        alt2 = rocket_alt
 
         print("[PTR] [Calc] Rocket location:  ({} N, {} E, {} m)".format(lat2,lon2,alt2))
 
