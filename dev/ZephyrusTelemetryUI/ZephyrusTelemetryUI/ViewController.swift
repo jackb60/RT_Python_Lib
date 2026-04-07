@@ -56,18 +56,7 @@ class ViewController: NSViewController, NSWindowDelegate, NSTextFieldDelegate {
     
     @IBAction func toggleUIAction(_     sender: Any) {
         if isUIOn {
-            // If the UI is on, shut it down.
-            // Kill the process that is running script.sh
-            scriptProcess?.terminate()
-            scriptProcess?.waitUntilExit()
-            scriptProcess = nil
-            if let pipe = outputPipe {
-                pipe.fileHandleForReading.readabilityHandler = nil
-                try? pipe.fileHandleForReading.close()
-            }
-            outputPipe = nil
-            isUIOn = false
-            if let button = toggleUI { button.title = "Start" }
+            stopUIProcess()
         }
         else {
             
@@ -105,6 +94,12 @@ class ViewController: NSViewController, NSWindowDelegate, NSTextFieldDelegate {
                 return
             }
 
+            process.terminationHandler = { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.handleUIProcessExit()
+                }
+            }
+
             scriptProcess = process
             isUIOn = true
             if let button = toggleUI { button.title = "Stop" }
@@ -125,6 +120,31 @@ class ViewController: NSViewController, NSWindowDelegate, NSTextFieldDelegate {
                 }
             }
         }
+    }
+
+    private func stopUIProcess() {
+        guard let process = scriptProcess else {
+            handleUIProcessExit()
+            return
+        }
+
+        if process.isRunning {
+            process.terminate()
+        }
+    }
+
+    private func handleUIProcessExit() {
+        scriptProcess?.terminationHandler = nil
+        scriptProcess = nil
+
+        if let pipe = outputPipe {
+            pipe.fileHandleForReading.readabilityHandler = nil
+            try? pipe.fileHandleForReading.close()
+        }
+        outputPipe = nil
+
+        isUIOn = false
+        toggleUI?.title = "Start"
     }
     
     private func savePathToDefaults() {
@@ -160,9 +180,9 @@ class ViewController: NSViewController, NSWindowDelegate, NSTextFieldDelegate {
 
     func windowWillClose(_ notification: Notification) {
         savePathToDefaults()
+        stopUIProcess()
         NSApp.terminate(nil)
     }
 
 
 }
-
