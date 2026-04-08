@@ -176,7 +176,7 @@ class rocket:
             packet = self.ser.read(128)
             gnd_info = self.ser.read(14)
             self.rssi = struct.unpack("<b", gnd_info[0:1])[0] - 99
-            self.gnd_fix = True if (gnd_info[1] == 1) else False
+            self.gnd_fix = True if (gnd_info[1] == 3) else False
             self.gnd_lat = np.round(struct.unpack("<l", gnd_info[2:6])[0] * 1e-7,5)
             self.gnd_lon = np.round(struct.unpack("<l", gnd_info[6:10])[0] * 1e-7,5)
             self.gnd_alt = np.round(struct.unpack("<l", gnd_info[10:14])[0] / 1000,2)
