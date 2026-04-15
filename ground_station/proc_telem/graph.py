@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import ast
 
 # === Load CSV ===
-TELEM_FILE_TO_PROC = "GYRO_CALCS.csv"
+TELEM_FILE_TO_PROC = "ZEPH_TEST_FLIGHT_GS2.csv"
 pathToTelems = "../telemetry/"
 
 df = pd.read_csv(pathToTelems+TELEM_FILE_TO_PROC)
@@ -40,7 +40,9 @@ cols = [c.strip() for c in cols]
 
 plt.figure()
 
-# === Plot data ===
+# === Build list of things to plot first ===
+plot_items = []
+
 for col in cols:
     if col not in df.columns:
         print(f"Column '{col}' not found, skipping.")
@@ -53,31 +55,50 @@ for col in cols:
         indices = [int(i.strip()) for i in idx_input.split(",")]
 
         for idx in indices:
-            y = df[col].apply(lambda x: x[idx])
-            plt.plot(df['time'], y, label=f"{col}[{idx}]")
+            plot_items.append((col, idx))
     else:
-        plt.plot(df['time'], df[col], label=col)
+        plot_items.append((col, None))
 
-# === STATE OVERLAY ===
-if df['state_clean'] is not None:
-    prev_state = df['state_clean'].iloc[0]
+# === Create subplots ===
+n = len(plot_items)
+fig, axes = plt.subplots(n, 1, figsize=(10, 3*n), sharex=True)
 
-    for i in range(1, len(df)):
-        curr_state = df['state_clean'].iloc[i]
-        if curr_state != prev_state:
-            t = df['time'].iloc[i]
+# If only one plot, axes isn't a list
+if n == 1:
+    axes = [axes]
 
-            plt.axvline(x=t, linestyle='--')  # vertical line
-            plt.text(t, plt.ylim()[1], curr_state,
-                     rotation=90, verticalalignment='bottom')
+# === Plot each item ===
+for ax, (col, idx) in zip(axes, plot_items):
 
-            prev_state = curr_state
+    if idx is not None:
+        y = df[col].apply(lambda x: x[idx])
+        label = f"{col}[{idx}]"
+    else:
+        y = df[col]
+        label = col
 
-# === Final formatting ===
-plt.xlabel("Time (s)")
-plt.ylabel("Value")
-plt.title("Data vs Time (with State Overlay)")
-plt.legend()
-plt.grid()
+    ax.plot(df['time'], y, label=label)
 
+    # === STATE OVERLAY ===
+    if df['state_clean'] is not None:
+        prev_state = df['state_clean'].iloc[0]
+
+        for i in range(1, len(df)):
+            curr_state = df['state_clean'].iloc[i]
+            if curr_state != prev_state:
+                t = df['time'].iloc[i]
+                ax.axvline(x=t, linestyle='--')
+                ax.text(t, ax.get_ylim()[1], curr_state,
+                        rotation=90, verticalalignment='bottom')
+                prev_state = curr_state
+
+    ax.set_ylabel("Value")
+    ax.set_title(label)
+    ax.legend()
+    ax.grid()
+
+# === Shared X label ===
+axes[-1].set_xlabel("Time (s)")
+
+plt.tight_layout()
 plt.show()
