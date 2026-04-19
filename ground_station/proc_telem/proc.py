@@ -71,7 +71,7 @@ import matplotlib as mpl
 rcParams['axes.prop_cycle'] = mpl.cycler(color=[blue,red,green,lblue,lred,orange]) 
 
 
-TELEM_FILE_TO_PROC = "ZEPH_TEST_FLIGHT_GS1.csv"
+TELEM_FILE_TO_PROC = "ZEPH_TEST_FLIGHT_GS2.csv"
 pathToTelems = "../telemetry/"
 
 df = pd.read_csv(pathToTelems+TELEM_FILE_TO_PROC)
@@ -80,8 +80,12 @@ ts0 = np.array(df["flight_time"])*1e-3
 ts0 -= ts0[0]
 
 
-alt = np.array(df["barofilteredalt"])
+alt = np.array(df["gpsalt"])
+alt_airbrakes = np.array(df["barofilteredalt"])
 vel = np.array(df["accel_integrated_velo"])
+import scipy.signal as spsig
+vel_proc = spsig.savgol_filter(alt_airbrakes,20,2,1)/(ts0[1]-ts0[0])
+curr = np.array(df["total_current"])
 apogeeInd = np.nanargmax(alt)
 tenSecInd = 0
 
@@ -108,13 +112,13 @@ airbrakes_out2 = servos_out2[0]
 airbrakes_out_plot = np.array([np.nan if np.abs(ri - airbrakes_out[0]) < 1 else ri for ri in airbrakes_out])[tenSecInd:apogeeInd]
 airbrakes_out_plot2 = np.array([np.nan if np.abs(ri - airbrakes_out2[0]) < 1 else ri for ri in airbrakes_out2])
 
-fig,axs = plt.subplots(nrows=2,sharex='col',figsize=(8.5,8.5))
+fig,axs = plt.subplots(nrows=3,sharex='col',figsize=(8.5,8.5))
 
 ax = axs[0]
 
 
 def calc_alt_prediction(A,index):
-	h0 = alt[index]
+	h0 = alt_airbrakes[index]
 	v0 = vel[index]
 	m = mass
 	c = rho * rocketCd * a_ref / 2.0
@@ -124,7 +128,7 @@ def calc_alt_prediction(A,index):
 	hf = h0 + velContribFudge * m / (2.0 * (alpha + c)) * np.log((v0 * v0 * (alpha + c)) / g / m + 1.0)
 	return hf - 13.0 + patchingAltitude
 
-conrad = calc_alt_prediction(0,np.argmin((alt - 4284)**2))
+conrad = calc_alt_prediction(0,np.argmin((alt_airbrakes - 4284)**2))
 patchingAltitude = SIM_PREDICTED_ALTITUDE-conrad
 
 
@@ -142,7 +146,8 @@ ax.grid()
 coeff = 1/np.max(airbrakes_out2[0]-airbrakes_out[tenSecInd:apogeeInd])
 
 ax = axs[1]
-ax.plot(ts-10,alt[tenSecInd:apogeeInd],color=blue,label="True Altitude")
+ax.plot(ts-10,alt[tenSecInd:apogeeInd],color=blue,label="GPS Altitude")
+ax.plot(ts-10,alt_airbrakes[tenSecInd:apogeeInd],color=lblue,label="Baro Altitude")
 alt_prediction = [calc_alt_prediction((airbrakes_out2[0]-airbrakes_out[ind])*coeff*a_max,ind) for ind in range(tenSecInd,apogeeInd)]
 print(alt_prediction[np.argmax([alt[ind] for ind in range(tenSecInd,apogeeInd)])])
 #print(alt_prediction)
@@ -150,21 +155,25 @@ ax.plot(ts-10,alt_prediction,color=green,label="Airbrakes Algorithm Final Altitu
 #ax.plot(ts2-10,roll2,color=orange,alpha=0.5)
 #ax.set_ylabel("Roll Angle (deg)")
 ax.legend()
-ax.set_ylim(4700,5600)
+ax.set_ylim(4000,5600)
 ax.grid()
 ax.vlines(ts[-1]-10,*ax.get_ylim(),color='k',linestyle='dotted')
 ax.set_ylabel("Altitude (m)")
-"""
+
 ax = axs[2]
-ax.plot(ts-10,rollrate,color='purple')
-ax.plot(ts2-10,rollrate2[apogeeInd:],color='purple',alpha=0.5)
-ax.set_ylabel("Roll Rate (deg/s)")
+def goofy_line(x,a,b,c,d):
+	return x*a + b#x*x*b + x*c + d
+opt0,pcov = spopt.curve_fit(goofy_line,(ts-10)[apogeeInd*9//10:apogeeInd],vel[apogeeInd*9//10:apogeeInd])
+ax.plot(ts-10,vel[tenSecInd:apogeeInd]-goofy_line(ts-10,*opt0),color='purple')
+#ax.plot(ts-10,line(ts-10,*opt0),color='purple')
+#ax.plot(ts2-10,vel[apogeeInd:]-line(ts2-10,*opt0),color='purple',alpha=0.5)
+ax.set_ylabel("Vel (m/s)")
 ax.grid()
-#ax.set_ylim(-50,50)
+ax.set_ylim(-10,10)
 
 ax.vlines(ts0[apogeeInd]-10,*ax.get_ylim(),color='k',linestyle='dotted')
-"""
-ax.set_xlim(14,(ts[-1]-10)*1.05)
+
+ax.set_xlim(71,86)
 ax.set_xlabel("Flight Time (s)")
 plt.tight_layout()
 plt.savefig("plot_telemetry_{}.pdf".format(TELEM_FILE_TO_PROC))
