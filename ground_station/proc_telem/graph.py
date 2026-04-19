@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import ast
+import numpy as np
 
 # === Load CSV ===
-TELEM_FILE_TO_PROC = "ZEPH_TEST_FLIGHT_GS2.csv"
+TELEM_FILE_TO_PROC = "ZEPH_TEST_FLIGHT_GS1.csv"
 pathToTelems = "../telemetry/"
 
 df = pd.read_csv(pathToTelems+TELEM_FILE_TO_PROC)
@@ -78,6 +79,7 @@ for ax, (col, idx) in zip(axes, plot_items):
         label = col
 
     ax.plot(df['time'], y, label=label)
+    print("Obtained max value {}".format(np.max(y)))
 
     # === STATE OVERLAY ===
     if df['state_clean'] is not None:
